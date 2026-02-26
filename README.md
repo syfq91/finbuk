@@ -65,7 +65,7 @@ lib/
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/syfq91/finbuk.git
    cd finbuk
    ```
 
@@ -101,11 +101,6 @@ flutter build apk --release
 ### Android App Bundle (for Play Store)
 ```bash
 flutter build appbundle --release
-```
-
-### iOS
-```bash
-flutter build ios --release
 ```
 
 ## Development Notes
