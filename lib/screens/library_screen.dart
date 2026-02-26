@@ -1,0 +1,94 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../repositories/book_repository.dart';
+import '../models/item.dart';
+import 'library_items_screen.dart';
+
+class LibraryScreen extends StatelessWidget {
+  const LibraryScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context);
+    final repository = BookRepository();
+
+    return FutureBuilder<List<Item>>(
+      future: repository.getUserViews(
+        auth.serverUrl!,
+        auth.userId!,
+        auth.token!,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            (!snapshot.hasData || snapshot.data!.isEmpty)) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text(
+                  'Could not fetch libraries',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
+            ),
+          );
+        }
+
+        final libraries = snapshot.data!;
+        return ListView.separated(
+          itemCount: libraries.length + 1,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          separatorBuilder: (context, index) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.transparent,
+                  child: Icon(Icons.favorite, color: Colors.red),
+                ),
+                title: const Text(
+                  'Favorites',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  // Future: Navigate to favorites content
+                },
+              );
+            }
+
+            final library = libraries[index - 1];
+            return ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Colors.transparent,
+                child: Icon(Icons.library_books, color: Colors.deepPurple),
+              ),
+              title: Text(
+                library.name ?? 'Unknown Library',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => LibraryItemsScreen(
+                      libraryId: library.id,
+                      libraryName: library.name ?? 'Library',
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
