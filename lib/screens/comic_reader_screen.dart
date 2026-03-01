@@ -324,13 +324,13 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Loading comic...'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text('Loading ${widget.title}...'),
           ],
         ),
       );
