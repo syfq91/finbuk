@@ -509,13 +509,13 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
           if (_isLoading)
             Container(
               color: Theme.of(context).scaffoldBackgroundColor,
-              child: const Center(
+              child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Loading book...'),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text('Loading ${widget.title}...'),
                   ],
                 ),
               ),
