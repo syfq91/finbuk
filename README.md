@@ -126,7 +126,7 @@ See [pubspec.yaml](pubspec.yaml) for complete dependency list.
 
 ## License
 
-[MIT License](LICENSE) (add license file if applicable)
+[MIT License](LICENSE)
 
 ## Acknowledgments
 
