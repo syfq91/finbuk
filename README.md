@@ -8,13 +8,19 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 
 - **Jellyfin Integration**: Connect to any Jellyfin server to access your personal media library
 - **Authentication**: Secure login with credential storage using flutter_secure_storage
-- **EPUB Reader**: Full-featured EPUB reading experience with chapter navigation
+- **EPUB Reader**: Full-featured EPUB reading with flureadium, supporting:
+  - Global and chapter-specific pagination
+  - Chapter navigation and table of contents
+  - Font size and font family customization
+  - Progress persistence across sessions
 - **Comic Reader**: Manga/comic reader with page-by-page navigation and zoom support
+  - Loading state displays book title
 - **Offline Downloads**: Download books for offline reading with progress tracking
 - **Library Organization**: Browse by collections, folders, and categories
 - **Local Database**: SQLite-based caching for faster library loading and download management
 - **Dark/Light Theme**: Material Design 3 with dynamic theme switching
-- **Responsive UI**: Intuitive navigation with bottom tab bar and drawer menus
+- **Responsive UI**: Intuitive navigation with bottom tab bar and navigation rail
+- **Android-Only**: Optimized for Android with core library desugaring for modern Java compatibility
 
 ## Tech Stack
 
@@ -23,36 +29,38 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 - **State Management**: Provider
 - **API**: Dio for Jellyfin API communication
 - **Local Storage**: SQLite (sqflite), SharedPreferences, FlutterSecureStorage
-- **Readers**: flutter_epub_viewer (EPUB), manga_page_view (comics/manga)
+- **Readers**: flureadium (EPUB), manga_page_view (comics/manga)
 - **File Handling**: file_picker, permission_handler, path
 
 ## Project Structure
 
 ```
 lib/
-├── main.dart              # App entry point, theme configuration
-├── models/                 # Data models
-│   └── item.dart          # Media item model
-├── screens/               # UI screens
-│   ├── home_screen.dart
-│   ├── library_screen.dart
-│   ├── library_items_screen.dart
-│   ├── book_details_screen.dart
-│   ├── epub_reader_screen.dart
-│   ├── comic_reader_screen.dart
-│   ├── downloads_screen.dart
-│   ├── settings_screen.dart
-│   ├── login_screen.dart
-│   └── main_screen.dart   # Main navigation container
-├── providers/             # State management
-│   ├── auth_provider.dart
-│   └── theme_provider.dart
-└── services/              # Business logic
-    ├── jellyfin_service.dart  # Jellyfin API client
-    ├── database_service.dart  # SQLite operations
-    ├── file_service.dart      # File system operations
-    ├── download_manager.dart  # Download management
-    └── permission_service.dart # Device permissions
+├── main.dart                     # App entry point, MultiProvider setup, AuthWrapper
+├── models/                       # Data models
+│   └── item.dart                # Media item model with rawJson
+├── providers/                    # State management (ChangeNotifier)
+│   ├── auth_provider.dart       # Auth state, credentials in flutter_secure_storage
+│   └── theme_provider.dart      # Theme/dark mode state
+├── repositories/                 # Business logic, data aggregation, caching
+│   └── book_repository.dart     # Coordinates API + SQLite caching
+├── services/                     # Low-level operations
+│   ├── jellyfin_service.dart    # Jellyfin API client (Dio)
+│   ├── database_service.dart    # SQLite operations
+│   ├── file_service.dart        # File system operations
+│   ├── download_manager.dart    # Download queue/progress
+│   └── permission_service.dart  # Android permissions requests
+└── screens/                      # UI widgets
+    ├── main_screen.dart         # Navigation container (bottom bar / rail)
+    ├── home_screen.dart         # Dashboard with resume items
+    ├── library_screen.dart      # Folder/collection browser
+    ├── library_items_screen.dart # Items within a folder
+    ├── book_details_screen.dart # Book info + actions
+    ├── epub_reader_screen.dart  # EPUB reader with flureadium
+    ├── comic_reader_screen.dart # CBZ/CBR reader with manga_page_view
+    ├── downloads_screen.dart    # Download management
+    ├── settings_screen.dart     # App settings
+    └── login_screen.dart        # Login form
 ```
 
 ## Getting Started
@@ -112,12 +120,13 @@ flutter build appbundle --release
 - SQLite database caches library items to reduce API calls
 - Download manager supports pause/resume and progress tracking
 - Permission handling for storage access on Android
+- Core library desugaring enabled for Java 17 compatibility (android/app/build.gradle.kts)
 
 ## Dependencies
 
 Key dependencies:
 - `dio`: HTTP client for Jellyfin API
-- `flutter_epub_viewer`: EPUB rendering
+- `flureadium`: EPUB rendering (replaced flutter_epub_viewer)
 - `manga_page_view`: Comic/manga page viewing
 - `sqflite`: Local database for caching
 - `provider`: State management

@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Finbuk is a Flutter **Android** application that serves as a Jellyfin client focused on book and comic reading. It connects to a Jellyfin server, authenticates users, and provides EPUB/comic reading with offline download support.
 
 **Tech Stack**: Flutter 3.10+, Dart, Provider (state management), Dio (HTTP), SQLite (sqflite), flutter_secure_storage
+**Build**: Java 17 with core library desugaring enabled
 
 ## Development Commands
 
@@ -48,30 +49,31 @@ The codebase follows a layered architecture with clear separation of concerns:
 
 ```
 lib/
-├── main.dart              # App entry, MultiProvider setup, theme config, AuthWrapper
-├── models/                 # Data models (Item)
-├── providers/              # State management (ChangeNotifier)
-│   ├── auth_provider.dart  # Auth state, credentials storage
-│   └── theme_provider.dart # Theme/dark mode state
-├── repositories/           # Business logic, data aggregation, caching
-│   └── book_repository.dart # Coordinates API + SQLite caching
-├── services/              # Low-level operations
-│   ├── jellyfin_service.dart  # Jellyfin API client (Dio)
-│   ├── database_service.dart  # SQLite operations
-│   ├── file_service.dart      # File system operations
-│   ├── download_manager.dart  # Download queue/progress
-│   └── permission_service.dart # Android permissions
-└── screens/               # UI widgets
-    ├── main_screen.dart   # Navigation container (bottom bar / rail)
-    ├── home_screen.dart   # Dashboard with resume items
-    ├── library_screen.dart # Folder/collection browser
+├── main.dart                      # App entry, MultiProvider setup, theme config, AuthWrapper
+├── models/                        # Data models
+│   └── item.dart                 # Media item model (stores rawJson)
+├── providers/                     # State management (ChangeNotifier)
+│   ├── auth_provider.dart        # Auth state, credentials in flutter_secure_storage
+│   └── theme_provider.dart       # Theme/dark mode state
+├── repositories/                  # Business logic, data aggregation, caching
+│   └── book_repository.dart      # Coordinates API + SQLite caching
+├── services/                      # Low-level operations
+│   ├── jellyfin_service.dart     # Jellyfin API client (Dio)
+│   ├── database_service.dart     # SQLite operations
+│   ├── file_service.dart         # File system operations
+│   ├── download_manager.dart     # Download queue/progress
+│   └── permission_service.dart   # Android permissions
+└── screens/                       # UI widgets
+    ├── main_screen.dart          # Navigation container (bottom bar / rail)
+    ├── home_screen.dart          # Dashboard with resume items
+    ├── library_screen.dart       # Folder/collection browser
     ├── library_items_screen.dart # Items within a folder
-    ├── book_details_screen.dart # Book info + actions
-    ├── epub_reader_screen.dart # EPUB reader
-    ├── comic_reader_screen.dart # CBZ/CBR reader
-    ├── downloads_screen.dart # Download management
-    ├── settings_screen.dart # App settings
-    └── login_screen.dart  # Login form
+    ├── book_details_screen.dart  # Book info + actions
+    ├── epub_reader_screen.dart   # EPUB reader with flureadium, pagination support
+    ├── comic_reader_screen.dart  # CBZ/CBR reader (manga_page_view)
+    ├── downloads_screen.dart     # Download management
+    ├── settings_screen.dart      # App settings
+    └── login_screen.dart         # Login form
 ```
 
 ### Data Flow Pattern
@@ -127,9 +129,18 @@ lib/
 
 ### Reader Notes
 
-- **EPUB**: `flutter_epub_viewer` package (see `epub_reader_screen.dart`)
-- **Comics**: `manga_page_view` package with page-by-page navigation (see `comic_reader_screen.dart`)
+- **EPUB**: `flureadium` package (migrated from `flutter_epub_viewer`)
+  - Supports both global and chapter-specific pagination
+  - Chapter navigation with table of contents
+  - Font size and font family customization (sans-serif, serif, monospace)
+  - Progress persistence using SharedPreferences
+  - Edge-to-edge reading mode
+  - See `epub_reader_screen.dart` for implementation
+- **Comics**: `manga_page_view` package with page-by-page navigation
+  - Loading state displays book title
+  - See `comic_reader_screen.dart` for implementation
 - Both support offline files from downloads
+- **Pagination**: EPUB reader supports both global pagination (entire book) and per-chapter pagination via settings
 
 ## Testing
 
@@ -141,7 +152,10 @@ lib/
 
 - `pubspec.yaml`: Dependencies, Flutter SDK ^3.10.8
 - `analysis_options.yaml`: Uses `package:flutter_lints/flutter.yaml`
-- `android/`: Standard Flutter Android project (gradle properties for build config)
+- `android/app/build.gradle.kts`: Android build config with:
+  - Java 17 compatibility (sourceCompatibility, targetCompatibility = VERSION_17)
+  - Core library desugaring enabled (`isCoreLibraryDesugaringEnabled = true`)
+  - Kotlin JVM target 17
 
 ## Important Conventions
 
