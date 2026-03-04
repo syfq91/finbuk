@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Finbuk is a Flutter mobile application that serves as a Jellyfin client focused on book and comic reading. It connects to a Jellyfin server, authenticates users, and provides EPUB/comic reading with offline download support.
+Finbuk is a Flutter **Android** application that serves as a Jellyfin client focused on book and comic reading. It connects to a Jellyfin server, authenticates users, and provides EPUB/comic reading with offline download support.
 
 **Tech Stack**: Flutter 3.10+, Dart, Provider (state management), Dio (HTTP), SQLite (sqflite), flutter_secure_storage
 

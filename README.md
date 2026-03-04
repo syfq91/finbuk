@@ -1,6 +1,8 @@
 # Finbuk
 
-A modern Flutter mobile application client for [Jellyfin](https://jellyfin.org/) that focuses on book and comic reading.
+A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.org/) that focuses on book and comic reading.
+
+> **Note**: This app is currently Android-only.
 
 ## Features
 

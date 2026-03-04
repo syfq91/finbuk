@@ -34,6 +34,8 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
   double _currentProgress = 0.0;
   int? _chapterCurrentPage;
   int? _chapterTotalPages;
+  int? _currentLocation;
+  int? _totalLocations;
   bool _isAppBarVisible = false;
   bool _isLoading = true;
   bool _isSettingsLoaded = false;
@@ -278,12 +280,49 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
 
                                     // delay slightly to allow BottomSheet animation & UI resizing
                                     // (e.g. immersive mode changes) to settle without aborting rendering
+                                    final scaffoldMessenger = ScaffoldMessenger.of(context);
                                     Future.delayed(
                                       const Duration(milliseconds: 300),
                                       () {
                                         if (!mounted) return;
-                                        _controller.clearSelection();
-                                        _controller.display(cfi: chapter.href);
+                                        
+                                        // Chapter navigation is temporarily disabled for future implementation
+                                        if (mounted) {
+                                          scaffoldMessenger.showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Chapter navigation is temporarily disabled'),
+                                              duration: Duration(seconds: 2),
+                                            ),
+                                          );
+                                        }
+
+                                        /*
+                                        _controller.webViewController?.evaluateJavascript(
+                                          source: """
+                                            (function() {
+                                              try {
+                                                // Force clear selection state before navigating
+                                                if (typeof isSelecting !== 'undefined') isSelecting = false;
+                                                if (typeof lastCfiRange !== 'undefined') lastCfiRange = null;
+                                                if (typeof clearSelection === 'function') clearSelection();
+                                                
+                                                var href = '${chapter.href.replaceAll("'", "\\'")}';
+                                                console.log("Navigating to chapter href:", href);
+                                                
+                                                // Some epub.js versions prefer spine id mapping
+                                                var spineItem = book.spine.get(href);
+                                                var target = spineItem ? spineItem.href : href;
+                                                
+                                                rendition.display(target).catch(function(e) {
+                                                  console.error("Display error for " + target + ":", e);
+                                                });
+                                              } catch (e) {
+                                                console.error("Navigation script error:", e);
+                                              }
+                                            })();
+                                          """,
+                                        );
+                                        */
                                       },
                                     );
                                   },
@@ -434,24 +473,78 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
                   onRelocated: (location) async {
                     _reportProgress(location.progress);
                     _saveCfi(location.startCfi);
+                    
+                    if (!mounted) return;
 
-                    // Fetch chapter progress directly from epub.js
+                    // Fetch global locations and chapter info from epub.js
                     try {
                       final controller = _controller.webViewController;
                       if (controller != null) {
-                        final result = await controller.evaluateJavascript(
-                          source:
-                              'rendition.currentLocation() ? rendition.currentLocation().start.displayed : null',
+                        final locationResult = await controller.evaluateJavascript(
+                          source: '''
+                            (function() {
+                              if (!window.book || !window.book.locations) return null;
+                              const currentLocation = window.rendition.currentLocation();
+                              if (!currentLocation || !currentLocation.start) return null;
+                              
+                              let index = currentLocation.start.location;
+                              if (index === -1 || index === undefined) {
+                                index = window.book.locations.locationFromCapi(currentLocation.start.cfi);
+                              }
+                              
+                              const locations = window.book.locations;
+                              const toc = window.book.navigation.toc;
+                              
+                              // Create a map of chapter start locations
+                              const chapterStarts = toc.map(c => {
+                                return {
+                                  href: c.href,
+                                  location: locations.locationFromCapi(c.href)
+                                };
+                              }).filter(c => c.location !== -1).sort((a, b) => a.location - b.location);
+
+                              // Find current chapter
+                              let currentChapterIndex = -1;
+                              for (let i = 0; i < chapterStarts.length; i++) {
+                                if (index >= chapterStarts[i].location) {
+                                  currentChapterIndex = i;
+                                } else {
+                                  break;
+                                }
+                              }
+
+                              let chapterPage = 0;
+                              let chapterTotal = 0;
+
+                              if (currentChapterIndex !== -1) {
+                                const start = chapterStarts[currentChapterIndex].location;
+                                const end = (currentChapterIndex + 1 < chapterStarts.length) 
+                                  ? chapterStarts[currentChapterIndex + 1].location 
+                                  : locations.length();
+                                
+                                chapterPage = index - start + 1;
+                                chapterTotal = end - start;
+                              }
+                              
+                              return {
+                                index: index + 1,
+                                total: locations.length(),
+                                chapterPage: chapterPage,
+                                chapterTotal: chapterTotal
+                              };
+                            })()
+                          ''',
                         );
-                        if (mounted && result != null && result is Map) {
-                          final page = result['page'] as int?;
-                          final total = result['total'] as int?;
-                          if (page != null && total != null) {
-                            setState(() {
-                              _chapterCurrentPage = page;
-                              _chapterTotalPages = total;
-                            });
-                          }
+
+                        if (mounted &&
+                            locationResult != null &&
+                            locationResult is Map) {
+                          setState(() {
+                            _currentLocation = locationResult['index'] as int?;
+                            _totalLocations = locationResult['total'] as int?;
+                            _chapterCurrentPage = locationResult['chapterPage'] as int?;
+                            _chapterTotalPages = locationResult['chapterTotal'] as int?;
+                          });
                         }
                       }
                     } catch (e) {
@@ -469,6 +562,90 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
                     setState(() {
                       _isLoading = false;
                     });
+
+                    // Generate locations for accurate pagination across sections
+                    Future.delayed(const Duration(milliseconds: 500), () async {
+                      try {
+                        final controller = _controller.webViewController;
+                        if (controller != null) {
+                          await controller.evaluateJavascript(
+                            source: 'book.locations.generate(600).then(() => { console.log("Locations generated"); });',
+                          );
+                        }
+                      } catch (e) {
+                        debugPrint('Error generating locations: $e');
+                      }
+                    });
+                  },
+                  onLocationLoaded: () async {
+                    // Trigger a re-calculation of current location index now that locations are ready
+                    try {
+                      final controller = _controller.webViewController;
+                      if (controller != null) {
+                        final locationResult = await controller.evaluateJavascript(
+                          source: '''
+                            (function() {
+                              if (!window.book || !window.book.locations) return null;
+                              const currentLocation = window.rendition.currentLocation();
+                              if (!currentLocation || !currentLocation.start) return null;
+                              
+                              let index = currentLocation.start.location;
+                              if (index === -1 || index === undefined) {
+                                index = window.book.locations.locationFromCapi(currentLocation.start.cfi);
+                              }
+                              
+                              const locations = window.book.locations;
+                              const toc = window.book.navigation.toc;
+                              
+                              const chapterStarts = toc.map(c => {
+                                return {
+                                  href: c.href,
+                                  location: locations.locationFromCapi(c.href)
+                                };
+                              }).filter(c => c.location !== -1).sort((a, b) => a.location - b.location);
+
+                              let currentChapterIndex = -1;
+                              for (let i = 0; i < chapterStarts.length; i++) {
+                                if (index >= chapterStarts[i].location) {
+                                  currentChapterIndex = i;
+                                } else {
+                                  break;
+                                }
+                              }
+
+                              let chapterPage = 0;
+                              let chapterTotal = 0;
+                              if (currentChapterIndex !== -1) {
+                                const start = chapterStarts[currentChapterIndex].location;
+                                const end = (currentChapterIndex + 1 < chapterStarts.length) 
+                                  ? chapterStarts[currentChapterIndex + 1].location 
+                                  : locations.length();
+                                
+                                chapterPage = index - start + 1;
+                                chapterTotal = end - start;
+                              }
+                              
+                              return {
+                                index: index + 1,
+                                total: locations.length(),
+                                chapterPage: chapterPage,
+                                chapterTotal: chapterTotal
+                              };
+                            })()
+                          ''',
+                        );
+                        if (mounted && locationResult != null && locationResult is Map) {
+                          setState(() {
+                            _currentLocation = locationResult['index'] as int?;
+                            _totalLocations = locationResult['total'] as int?;
+                            _chapterCurrentPage = locationResult['chapterPage'] as int?;
+                            _chapterTotalPages = locationResult['chapterTotal'] as int?;
+                          });
+                        }
+                      }
+                    } catch (e) {
+                      debugPrint('Error refreshing location after load: $e');
+                    }
                   },
                   onTouchUp: _handleTapUp,
                 ),
@@ -490,9 +667,11 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
                       ),
                     ),
                     Text(
-                      _chapterCurrentPage != null && _chapterTotalPages != null
+                      _chapterCurrentPage != null && _chapterTotalPages != null && _chapterTotalPages! > 0
                           ? '$_chapterCurrentPage / $_chapterTotalPages'
-                          : '${(_currentProgress * 100).toStringAsFixed(1)}%',
+                          : _currentLocation != null && _totalLocations != null && _totalLocations! > 0
+                              ? 'Page $_currentLocation / $_totalLocations'
+                              : '${(_currentProgress * 100).toStringAsFixed(1)}%',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
