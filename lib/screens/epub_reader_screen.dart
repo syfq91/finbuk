@@ -1,9 +1,9 @@
-import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flureadium/flureadium.dart' as fr;
 import 'package:provider/provider.dart';
-import 'package:flutter_epub_viewer/flutter_epub_viewer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../services/jellyfin_service.dart';
@@ -25,26 +25,23 @@ class EpubReaderScreen extends StatefulWidget {
 }
 
 class _EpubReaderScreenState extends State<EpubReaderScreen> {
-  late final EpubController _controller;
+  final flureadium = fr.Flureadium();
+  fr.Publication? _publication;
   final JellyfinService _jellyfinService = JellyfinService();
   int? _totalTicks;
   String? _serverUrl;
   String? _token;
   String? _userId;
   double _currentProgress = 0.0;
-  int? _chapterCurrentPage;
-  int? _chapterTotalPages;
-  int? _currentLocation;
-  int? _totalLocations;
   bool _isAppBarVisible = false;
   bool _isLoading = true;
   bool _isSettingsLoaded = false;
   double _fontSize = 16.0;
   String _fontFamily = 'sans-serif';
-  String? _initialCfi;
+  String? _initialLocator;
   String _currentTime = '';
   Timer? _clockTimer;
-  List<EpubChapter> _chapters = [];
+  List<fr.Link> _chapters = [];
 
   @override
   void initState() {
@@ -54,18 +51,44 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
     _token = auth.token;
     _userId = auth.userId;
 
-    _controller = EpubController();
-
-    // Set immersive sticky mode for better reading experience
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // Set edge to edge mode so status bar is visible
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _initJellyfinProgress();
     _loadSettings();
+    _openPublication();
 
     _updateClock();
     _clockTimer = Timer.periodic(
       const Duration(seconds: 1),
       (_) => _updateClock(),
     );
+  }
+
+  Future<void> _openPublication() async {
+    try {
+      final publication = await flureadium.openPublication(widget.filePath);
+      if (mounted) {
+        setState(() {
+          _publication = publication;
+          _chapters = publication.tableOfContents;
+          _isLoading = false;
+        });
+
+        if (_initialLocator != null) {
+          final locator = fr.Locator.fromJson(jsonDecode(_initialLocator!));
+          if (locator != null) {
+            flureadium.goToLocator(locator);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error opening publication: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _updateClock() {
@@ -84,9 +107,29 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
     setState(() {
       _fontSize = prefs.getDouble('epub_font_size') ?? 16.0;
       _fontFamily = prefs.getString('epub_font_family') ?? 'sans-serif';
-      _initialCfi = prefs.getString('epub_cfi_${widget.itemId}');
+      _initialLocator = prefs.getString('epub_locator_${widget.itemId}');
       _isSettingsLoaded = true;
     });
+
+    // Apply settings if reader is ready
+    _applySettings();
+  }
+
+  void _applySettings() {
+    // flureadium expects fontSize as a percentage (100 = 100%)
+    // Mapping 16.0 (default slider) to 100%
+    final fontSizePercent = (_fontSize * 6.25).toInt();
+    
+    flureadium.setEPUBPreferences(
+      fr.EPUBPreferences(
+        fontSize: fontSizePercent,
+        fontFamily: _fontFamily,
+        fontWeight: null,
+        verticalScroll: false,
+        backgroundColor: null,
+        textColor: null,
+      ),
+    );
   }
 
   Future<void> _saveSettings() async {
@@ -95,9 +138,12 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
     await prefs.setString('epub_font_family', _fontFamily);
   }
 
-  Future<void> _saveCfi(String cfi) async {
+  Future<void> _saveLocator(fr.Locator locator) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('epub_cfi_${widget.itemId}', cfi);
+    await prefs.setString(
+      'epub_locator_${widget.itemId}',
+      jsonEncode(locator.toJson()),
+    );
   }
 
   Future<void> _initJellyfinProgress() async {
@@ -173,6 +219,8 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
       );
     }
 
+    flureadium.closePublication();
+
     // Restore system UI mode
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
@@ -181,28 +229,9 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
   void _toggleAppBar() {
     setState(() {
       _isAppBarVisible = !_isAppBarVisible;
-      if (_isAppBarVisible) {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      } else {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-      }
     });
   }
 
-  void _handleTapUp(double x, double y) {
-    if (x < 0.33) {
-      // Left tap: previous page
-      _controller.prev();
-      if (_isAppBarVisible) _toggleAppBar();
-    } else if (x > 0.66) {
-      // Right tap: next page
-      _controller.next();
-      if (_isAppBarVisible) _toggleAppBar();
-    } else {
-      // Middle tap: toggle AppBar
-      _toggleAppBar();
-    }
-  }
 
   void _showChaptersBottomSheet() {
     showModalBottomSheet(
@@ -242,89 +271,44 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
                       ? const Center(child: Text('No chapters available'))
                       : Builder(
                           builder: (context) {
-                            final List<EpubChapter> flatChapters = [];
-                            void flatten(
-                              List<EpubChapter> chapters,
-                              int level,
-                            ) {
-                              for (var c in chapters) {
+                            final List<fr.Link> flatChapters = [];
+
+                            // flureadium Link objects usually have nested 'children'
+                            void flattenRecursive(List<fr.Link> links, int level) {
+                              for (var link in links) {
                                 final prefix = List.filled(level, '  ').join();
-                                final title = c.title.isNotEmpty
-                                    ? c.title
+                                final title = link.title != null && link.title!.isNotEmpty
+                                    ? link.title!
                                     : 'Chapter ${flatChapters.length + 1}';
-                                flatChapters.add(
-                                  EpubChapter(
-                                    title: prefix + title,
-                                    href: c.href,
-                                    id: c.id,
-                                    subitems: [],
-                                  ),
-                                );
-                                if (c.subitems.isNotEmpty) {
-                                  flatten(c.subitems, level + 1);
+                                
+                                // Add to flat list with proper title indentation
+                                flatChapters.add(fr.Link(
+                                  href: link.href,
+                                  title: prefix + title,
+                                  children: [], // Flattened
+                                ));
+
+                                if (link.children.isNotEmpty) {
+                                  flattenRecursive(link.children, level + 1);
                                 }
                               }
                             }
 
-                            flatten(_chapters, 0);
+                            flattenRecursive(_chapters, 0);
 
                             return ListView.builder(
                               itemCount: flatChapters.length,
                               itemBuilder: (context, index) {
                                 final chapter = flatChapters[index];
                                 return ListTile(
-                                  title: Text(chapter.title),
+                                  title: Text(chapter.title ?? 'Chapter ${index + 1}'),
                                   onTap: () {
                                     Navigator.pop(context);
                                     if (_isAppBarVisible) _toggleAppBar();
 
-                                    // delay slightly to allow BottomSheet animation & UI resizing
-                                    // (e.g. immersive mode changes) to settle without aborting rendering
-                                    final scaffoldMessenger = ScaffoldMessenger.of(context);
-                                    Future.delayed(
-                                      const Duration(milliseconds: 300),
-                                      () {
-                                        if (!mounted) return;
-                                        
-                                        // Chapter navigation is temporarily disabled for future implementation
-                                        if (mounted) {
-                                          scaffoldMessenger.showSnackBar(
-                                            const SnackBar(
-                                              content: Text('Chapter navigation is temporarily disabled'),
-                                              duration: Duration(seconds: 2),
-                                            ),
-                                          );
-                                        }
-
-                                        /*
-                                        _controller.webViewController?.evaluateJavascript(
-                                          source: """
-                                            (function() {
-                                              try {
-                                                // Force clear selection state before navigating
-                                                if (typeof isSelecting !== 'undefined') isSelecting = false;
-                                                if (typeof lastCfiRange !== 'undefined') lastCfiRange = null;
-                                                if (typeof clearSelection === 'function') clearSelection();
-                                                
-                                                var href = '${chapter.href.replaceAll("'", "\\'")}';
-                                                console.log("Navigating to chapter href:", href);
-                                                
-                                                // Some epub.js versions prefer spine id mapping
-                                                var spineItem = book.spine.get(href);
-                                                var target = spineItem ? spineItem.href : href;
-                                                
-                                                rendition.display(target).catch(function(e) {
-                                                  console.error("Display error for " + target + ":", e);
-                                                });
-                                              } catch (e) {
-                                                console.error("Navigation script error:", e);
-                                              }
-                                            })();
-                                          """,
-                                        );
-                                        */
-                                      },
-                                    );
+                                    if (_publication != null) {
+                                      flureadium.goByLink(chapter, _publication!);
+                                    }
                                   },
                                 );
                               },
@@ -374,7 +358,7 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
                                 _fontSize = value;
                               });
                               setState(() {});
-                              _controller.setFontSize(fontSize: _fontSize);
+                              _applySettings();
                               _saveSettings();
                             },
                           ),
@@ -403,16 +387,7 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
                           _fontFamily = newSelection.first;
                         });
                         setState(() {});
-                        _controller.updateTheme(
-                          theme: EpubTheme.custom(
-                            customCss: {
-                              '*': {
-                                'font-family':
-                                    '${_getFontFamilyCss()} !important',
-                              },
-                            },
-                          ),
-                        );
+                        _applySettings();
                         _saveSettings();
                       },
                     ),
@@ -427,17 +402,6 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
     );
   }
 
-  String _getFontFamilyCss() {
-    switch (_fontFamily) {
-      case 'serif':
-        return '"Noto Serif", serif';
-      case 'monospace':
-        return '"Noto Sans Mono", monospace';
-      case 'sans-serif':
-      default:
-        return '"Noto Sans", sans-serif';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -456,199 +420,48 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
           Column(
             children: [
               Expanded(
-                child: EpubViewer(
-                  epubSource: EpubSource.fromFile(File(widget.filePath)),
-                  epubController: _controller,
-                  initialCfi: _initialCfi,
-                  displaySettings: EpubDisplaySettings(
-                    fontSize: _fontSize.toInt(),
-                    theme: EpubTheme.custom(
-                      customCss: {
-                        '*': {
-                          'font-family': '${_getFontFamilyCss()} !important',
-                        },
-                      },
-                    ),
-                  ),
-                  onRelocated: (location) async {
-                    _reportProgress(location.progress);
-                    _saveCfi(location.startCfi);
-                    
-                    if (!mounted) return;
-
-                    // Fetch global locations and chapter info from epub.js
-                    try {
-                      final controller = _controller.webViewController;
-                      if (controller != null) {
-                        final locationResult = await controller.evaluateJavascript(
-                          source: '''
-                            (function() {
-                              if (!window.book || !window.book.locations) return null;
-                              const currentLocation = window.rendition.currentLocation();
-                              if (!currentLocation || !currentLocation.start) return null;
-                              
-                              let index = currentLocation.start.location;
-                              if (index === -1 || index === undefined) {
-                                index = window.book.locations.locationFromCapi(currentLocation.start.cfi);
+                child: _publication == null
+                    ? const Center(child: CircularProgressIndicator())
+                    : Stack(
+                        children: [
+                          fr.ReadiumReaderWidget(
+                            publication: _publication!,
+                            initialLocator: _initialLocator != null 
+                              ? fr.Locator.fromJson(jsonDecode(_initialLocator!)) 
+                              : null,
+                            onReady: () {
+                              _applySettings();
+                            },
+                            onLocatorChanged: (locator) {
+                              if (mounted) {
+                                setState(() {
+                                  _currentProgress = locator.locations?.totalProgression ?? 0.0;
+                                });
                               }
-                              
-                              const locations = window.book.locations;
-                              const toc = window.book.navigation.toc;
-                              
-                              // Create a map of chapter start locations
-                              const chapterStarts = toc.map(c => {
-                                return {
-                                  href: c.href,
-                                  location: locations.locationFromCapi(c.href)
-                                };
-                              }).filter(c => c.location !== -1).sort((a, b) => a.location - b.location);
-
-                              // Find current chapter
-                              let currentChapterIndex = -1;
-                              for (let i = 0; i < chapterStarts.length; i++) {
-                                if (index >= chapterStarts[i].location) {
-                                  currentChapterIndex = i;
+                              _reportProgress(_currentProgress);
+                              _saveLocator(locator);
+                            },
+                          ),
+                          Positioned.fill(
+                            child: GestureDetector(
+                              onTapUp: (details) {
+                                final width = MediaQuery.of(context).size.width;
+                                final x = details.globalPosition.dx / width;
+                                if (x < 0.33) {
+                                  flureadium.goLeft();
+                                  if (_isAppBarVisible) _toggleAppBar();
+                                } else if (x > 0.66) {
+                                  flureadium.goRight();
+                                  if (_isAppBarVisible) _toggleAppBar();
                                 } else {
-                                  break;
+                                  _toggleAppBar();
                                 }
-                              }
-
-                              let chapterPage = 0;
-                              let chapterTotal = 0;
-
-                              if (currentChapterIndex !== -1) {
-                                const start = chapterStarts[currentChapterIndex].location;
-                                const end = (currentChapterIndex + 1 < chapterStarts.length) 
-                                  ? chapterStarts[currentChapterIndex + 1].location 
-                                  : locations.length();
-                                
-                                chapterPage = index - start + 1;
-                                chapterTotal = end - start;
-                              }
-                              
-                              return {
-                                index: index + 1,
-                                total: locations.length(),
-                                chapterPage: chapterPage,
-                                chapterTotal: chapterTotal
-                              };
-                            })()
-                          ''',
-                        );
-
-                        if (mounted &&
-                            locationResult != null &&
-                            locationResult is Map) {
-                          setState(() {
-                            _currentLocation = locationResult['index'] as int?;
-                            _totalLocations = locationResult['total'] as int?;
-                            _chapterCurrentPage = locationResult['chapterPage'] as int?;
-                            _chapterTotalPages = locationResult['chapterTotal'] as int?;
-                          });
-                        }
-                      }
-                    } catch (e) {
-                      debugPrint('Error fetching chapter progress: $e');
-                    }
-                  },
-                  onChaptersLoaded: (chapters) {
-                    if (mounted) {
-                      setState(() {
-                        _chapters = chapters;
-                      });
-                    }
-                  },
-                  onEpubLoaded: () {
-                    setState(() {
-                      _isLoading = false;
-                    });
-
-                    // Generate locations for accurate pagination across sections
-                    Future.delayed(const Duration(milliseconds: 500), () async {
-                      try {
-                        final controller = _controller.webViewController;
-                        if (controller != null) {
-                          await controller.evaluateJavascript(
-                            source: 'book.locations.generate(600).then(() => { console.log("Locations generated"); });',
-                          );
-                        }
-                      } catch (e) {
-                        debugPrint('Error generating locations: $e');
-                      }
-                    });
-                  },
-                  onLocationLoaded: () async {
-                    // Trigger a re-calculation of current location index now that locations are ready
-                    try {
-                      final controller = _controller.webViewController;
-                      if (controller != null) {
-                        final locationResult = await controller.evaluateJavascript(
-                          source: '''
-                            (function() {
-                              if (!window.book || !window.book.locations) return null;
-                              const currentLocation = window.rendition.currentLocation();
-                              if (!currentLocation || !currentLocation.start) return null;
-                              
-                              let index = currentLocation.start.location;
-                              if (index === -1 || index === undefined) {
-                                index = window.book.locations.locationFromCapi(currentLocation.start.cfi);
-                              }
-                              
-                              const locations = window.book.locations;
-                              const toc = window.book.navigation.toc;
-                              
-                              const chapterStarts = toc.map(c => {
-                                return {
-                                  href: c.href,
-                                  location: locations.locationFromCapi(c.href)
-                                };
-                              }).filter(c => c.location !== -1).sort((a, b) => a.location - b.location);
-
-                              let currentChapterIndex = -1;
-                              for (let i = 0; i < chapterStarts.length; i++) {
-                                if (index >= chapterStarts[i].location) {
-                                  currentChapterIndex = i;
-                                } else {
-                                  break;
-                                }
-                              }
-
-                              let chapterPage = 0;
-                              let chapterTotal = 0;
-                              if (currentChapterIndex !== -1) {
-                                const start = chapterStarts[currentChapterIndex].location;
-                                const end = (currentChapterIndex + 1 < chapterStarts.length) 
-                                  ? chapterStarts[currentChapterIndex + 1].location 
-                                  : locations.length();
-                                
-                                chapterPage = index - start + 1;
-                                chapterTotal = end - start;
-                              }
-                              
-                              return {
-                                index: index + 1,
-                                total: locations.length(),
-                                chapterPage: chapterPage,
-                                chapterTotal: chapterTotal
-                              };
-                            })()
-                          ''',
-                        );
-                        if (mounted && locationResult != null && locationResult is Map) {
-                          setState(() {
-                            _currentLocation = locationResult['index'] as int?;
-                            _totalLocations = locationResult['total'] as int?;
-                            _chapterCurrentPage = locationResult['chapterPage'] as int?;
-                            _chapterTotalPages = locationResult['chapterTotal'] as int?;
-                          });
-                        }
-                      }
-                    } catch (e) {
-                      debugPrint('Error refreshing location after load: $e');
-                    }
-                  },
-                  onTouchUp: _handleTapUp,
-                ),
+                              },
+                              behavior: HitTestBehavior.translucent,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
               Container(
                 height: 40,
@@ -667,11 +480,7 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
                       ),
                     ),
                     Text(
-                      _chapterCurrentPage != null && _chapterTotalPages != null && _chapterTotalPages! > 0
-                          ? '$_chapterCurrentPage / $_chapterTotalPages'
-                          : _currentLocation != null && _totalLocations != null && _totalLocations! > 0
-                              ? 'Page $_currentLocation / $_totalLocations'
-                              : '${(_currentProgress * 100).toStringAsFixed(1)}%',
+                      '${(_currentProgress * 100).toStringAsFixed(1)}%',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
