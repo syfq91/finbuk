@@ -1,6 +1,7 @@
 import '../services/jellyfin_service.dart';
 import '../services/database_service.dart';
 import '../models/item.dart';
+import 'package:flutter/foundation.dart';
 
 class BookRepository {
   final JellyfinService _apiService = JellyfinService();
@@ -23,7 +24,7 @@ class BookRepository {
             await _dbService.clearCategory('user_views');
             await _dbService.saveItems(items, 'user_views');
           })
-          .catchError((_) {});
+          .catchError((e) => debugPrint('Background cache refresh failed for user_views: $e'));
 
       return cached;
     }
@@ -56,7 +57,7 @@ class BookRepository {
             await _dbService.clearCategory('resume');
             await _dbService.saveItems(items, 'resume');
           })
-          .catchError((_) {});
+          .catchError((e) => debugPrint('Background cache refresh failed for resume: $e'));
       return cached;
     }
 
@@ -93,7 +94,9 @@ class BookRepository {
             await _dbService.clearCategory(category, parentId: parentId);
             await _dbService.saveItems(items, category);
           })
-          .catchError((_) {});
+          .catchError((e) => debugPrint(
+            'Background cache refresh failed for $category (parentId: $parentId): $e',
+          ));
       return cached;
     }
 
@@ -122,11 +125,12 @@ class BookRepository {
     bool recursive = false,
     int? limit,
     int? startIndex,
+    bool isFavorite = false,
     bool forceRefresh = false,
   }) async {
     // For paginated items, caching is more complex.
     // For now, let's cache the first page or small sets.
-    final category = 'items_${parentId ?? "root"}_$recursive';
+    final category = 'items_${parentId ?? "root"}_${recursive}_$isFavorite';
 
     // Only cache if we are getting the first page or it's not paginated
     final isFirstPage = (startIndex == null || startIndex == 0);
@@ -146,6 +150,7 @@ class BookRepository {
               recursive: recursive,
               limit: limit,
               startIndex: startIndex,
+              isFavorite: isFavorite,
             )
             .then((response) async {
               final items = (response['Items'] as List)
@@ -154,7 +159,9 @@ class BookRepository {
               await _dbService.clearCategory(category, parentId: parentId);
               await _dbService.saveItems(items, category);
             })
-            .catchError((_) {});
+            .catchError((e) => debugPrint(
+              'Background cache refresh failed for $category (parentId: $parentId, recursive: $recursive, isFavorite: $isFavorite): $e',
+            ));
 
         return {
           'Items': cached.map((item) => item.toJson()).toList(),
@@ -171,6 +178,7 @@ class BookRepository {
       recursive: recursive,
       limit: limit,
       startIndex: startIndex,
+      isFavorite: isFavorite,
     );
 
     if (isFirstPage) {
@@ -199,10 +207,9 @@ class BookRepository {
           .getItemDetails(url, userId, token, itemId)
           .then((rawItem) async {
             final item = Item.fromJson(rawItem);
-            // We use 'details' as category or similar, or just save generic
             await _dbService.saveItems([item], 'details');
           })
-          .catchError((_) {});
+          .catchError((e) => debugPrint('Background cache refresh failed for item details (itemId: ${itemId}): $e'));
 
       return cached.toJson();
     }

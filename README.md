@@ -8,11 +8,6 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 
 - **Jellyfin Integration**: Connect to any Jellyfin server to access your personal media library
 - **Authentication**: Secure login with credential storage using flutter_secure_storage
-- **EPUB Reader**: Full-featured EPUB reading with flureadium, supporting:
-  - Global and chapter-specific pagination
-  - Chapter navigation and table of contents
-  - Font size and font family customization
-  - Progress persistence across sessions
 - **Comic Reader**: Manga/comic reader with page-by-page navigation and zoom support
   - Loading state displays book title
 - **Offline Downloads**: Download books for offline reading with progress tracking
@@ -29,7 +24,7 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 - **State Management**: Provider
 - **API**: Dio for Jellyfin API communication
 - **Local Storage**: SQLite (sqflite), SharedPreferences, FlutterSecureStorage
-- **Readers**: flureadium (EPUB), manga_page_view (comics/manga)
+- **Readers**: manga_page_view (comics/manga)
 - **File Handling**: file_picker, permission_handler, path
 
 ## Project Structure
@@ -56,7 +51,6 @@ lib/
     ├── library_screen.dart      # Folder/collection browser
     ├── library_items_screen.dart # Items within a folder
     ├── book_details_screen.dart # Book info + actions
-    ├── epub_reader_screen.dart  # EPUB reader with flureadium
     ├── comic_reader_screen.dart # CBZ/CBR reader with manga_page_view
     ├── downloads_screen.dart    # Download management
     ├── settings_screen.dart     # App settings
@@ -93,11 +87,10 @@ lib/
 
 The app connects to a Jellyfin server specified during login. Ensure your Jellyfin server:
 - Is accessible from your device
-- Has user libraries containing books/comics (EPUB, PDF, CBZ, CBR formats)
+- Has user libraries containing comics (CBZ, CBR formats)
 
 ### Supported Formats
 
-- **EPUB**: `.epub`
 - **Comics/Manga**: `.cbz`, `.cbr` (via archive extraction)
 - **Images**: `.jpg`, `.jpeg`, `.png`, `.webp` for comic pages
 
@@ -126,7 +119,6 @@ flutter build appbundle --release
 
 Key dependencies:
 - `dio`: HTTP client for Jellyfin API
-- `flureadium`: EPUB rendering (replaced flutter_epub_viewer)
 - `manga_page_view`: Comic/manga page viewing
 - `sqflite`: Local database for caching
 - `provider`: State management

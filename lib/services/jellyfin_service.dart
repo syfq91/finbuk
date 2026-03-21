@@ -126,6 +126,7 @@ class JellyfinService {
     bool recursive = false,
     int? limit,
     int? startIndex,
+    bool isFavorite = false,
   }) async {
     final baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
     final headers = {
@@ -137,7 +138,7 @@ class JellyfinService {
     final Map<String, dynamic> queryParameters = {
       'IncludeItemTypes': 'Book,Folder,CollectionFolder',
       'Recursive': recursive,
-      'Fields': 'PrimaryImageAspectRatio,SortName,Type',
+      'Fields': 'PrimaryImageAspectRatio,SortName,Type,UserData',
       'SortBy': 'SortName',
       'SortOrder': 'Ascending',
     };
@@ -145,6 +146,9 @@ class JellyfinService {
     if (startIndex != null) queryParameters['StartIndex'] = startIndex;
     if (parentId != null) {
       queryParameters['ParentId'] = parentId;
+    }
+    if (isFavorite) {
+      queryParameters['Filters'] = 'IsFavorite';
     }
 
     try {

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Finbuk is a Flutter **Android** application that serves as a Jellyfin client focused on book and comic reading. It connects to a Jellyfin server, authenticates users, and provides EPUB/comic reading with offline download support.
+Finbuk is a Flutter **Android** application that serves as a Jellyfin client focused on comic reading. It connects to a Jellyfin server, authenticates users, and provides comic reading with offline download support.
 
 **Tech Stack**: Flutter 3.10+, Dart, Provider (state management), Dio (HTTP), SQLite (sqflite), flutter_secure_storage
 **Build**: Java 17 with core library desugaring enabled
@@ -69,7 +69,6 @@ lib/
     ├── library_screen.dart       # Folder/collection browser
     ├── library_items_screen.dart # Items within a folder
     ├── book_details_screen.dart  # Book info + actions
-    ├── epub_reader_screen.dart   # EPUB reader with flureadium, pagination support
     ├── comic_reader_screen.dart  # CBZ/CBR reader (manga_page_view)
     ├── downloads_screen.dart     # Download management
     ├── settings_screen.dart      # App settings
@@ -92,14 +91,28 @@ lib/
    - Download URLs
    - Playback progress reporting
 
+### Repository Public API
+
+BookRepository provides the following methods (all return `Future<List<Item>>` or `Future<Map<String, dynamic>>`):
+
+| Method | Purpose | Cache Category |
+|--------|---------|----------------|
+| `getUserViews()` | Library collections | `user_views` |
+| `getResumeItems()` | Books in progress | `resume` |
+| `getLatestMedia(parentId?)` | Latest additions | `latest_{parentId}` or `latest_all` |
+| `getItems(parentId, recursive, limit, startIndex)` | Browse folders/items | `items_{parentId}_{recursive}` (first page only) |
+| `getItemDetails(itemId)` | Item metadata | `details` |
+| All methods support `forceRefresh` parameter to bypass cache |
+
 ### State Management
 
 - **Provider** pattern with `ChangeNotifier`
 - `AuthProvider` stores credentials in `flutter_secure_storage` and provides:
-  - `isAuthenticated`, `serverUrl`, `token`, `userId`, `username`
-  - `login()` method with URL auto-detection (tries https, http, :8096)
+  - `isAuthenticated`, `serverUrl`, `token`, `userId`, `username`, `downloadPath`
+  - `login(url, username, password)` with URL auto-detection (tries https, http, :8096)
   - `logout()` clears token only (keeps username/serverUrl for convenience)
-- `ThemeProvider` manages light/dark/system theme mode
+  - `setDownloadPath(path)` persists download location
+- `ThemeProvider` manages light/dark/system theme mode (`themeMode`)
 
 ### Navigation
 
@@ -113,7 +126,32 @@ lib/
 - SQLite stores items by "category" (e.g., `user_views`, `resume`, `latest_all`, `items_{parentId}`)
 - First page of paginated results cached; deeper pages bypass cache
 - On API failure, returns cached data if available
-- Background refresh after returning cached data
+- Background refresh after returning cached data (fire-and-forget)
+
+### Database Schema
+
+**Table: `items`**
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | TEXT | Jellyfin item ID (part of composite PK) |
+| `name` | TEXT | Item display name |
+| `type` | TEXT | Jellyfin type (Book, Folder, etc.) |
+| `collectionType` | TEXT | Collection category (books) |
+| `parentId` | TEXT | Parent folder ID |
+| `category` | TEXT | Cache category key (part of composite PK) |
+| `json` | TEXT | Full item JSON (serialized) |
+| `updatedAt` | INTEGER | Timestamp for ordering |
+
+Composite PK: `(id, category)` - allows same item in multiple cache categories.
+
+**Table: `downloads`**
+| Column | Type | Description |
+|--------|------|-------------|
+| `itemId` | TEXT | Jellyfin item ID (PK) |
+| `filename` | TEXT | Local filename |
+| `downloadedAt` | INTEGER | Download timestamp |
+
+Database version: 2 (downloads table added in v2).
 
 ### API Client
 
@@ -125,28 +163,60 @@ lib/
   - `/Users/{userId}/Items` → browse folders/items
   - `/Users/{userId}/Items/Latest` → latest additions
   - `/Items/{itemId}/Download` → file download
-  - `/Sessions/Playing` etc. → playback progress
+  - `/Sessions/Playing` → playback progress reporting
+
+All GET endpoints return `[]` on failure (graceful degradation). POST endpoints throw exceptions.
+
+### Item Model
+
+The `Item` class wraps Jellyfin JSON responses:
+
+```dart
+class Item {
+  final String id;
+  final String? name;
+  final String? type;
+  final String? collectionType;
+  final Map<String, dynamic>? userData;
+  final String? parentId;
+  final double? primaryImageAspectRatio;
+  final String? sortName;
+  final Map<String, dynamic> rawJson; // Full original JSON
+}
+```
+
+- `rawJson` preserves all Jellyfin fields for flexible access in screens
+- `fromJson()` maps common fields; unknown fields stay in `rawJson`
+- `toDbMap(category)` serializes for SQLite storage
+- `fromDbMap()` reconstructs from database
 
 ### Reader Notes
 
-- **EPUB**: `flureadium` package (migrated from `flutter_epub_viewer`)
-  - Supports both global and chapter-specific pagination
-  - Chapter navigation with table of contents
-  - Font size and font family customization (sans-serif, serif, monospace)
-  - Progress persistence using SharedPreferences
-  - Edge-to-edge reading mode
-  - See `epub_reader_screen.dart` for implementation
 - **Comics**: `manga_page_view` package with page-by-page navigation
   - Loading state displays book title
   - See `comic_reader_screen.dart` for implementation
-- Both support offline files from downloads
-- **Pagination**: EPUB reader supports both global pagination (entire book) and per-chapter pagination via settings
+- Supports offline files from downloads
 
 ## Testing
 
 - Widget tests in `test/` using `flutter_test`
 - Tests wrap widgets with `MultiProvider` matching `main.dart` setup
-- Example pattern: `tester.pumpWidget(MultiProvider(...))` → `tester.pumpAndSettle()` → `find.byType(...)`
+- Standard pattern:
+  ```dart
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      ],
+      child: const FinbukApp(),
+    ),
+  );
+  await tester.pumpAndSettle();
+  expect(find.byType(MaterialApp), findsOneWidget);
+  ```
+- To test a screen directly, match the provider setup in your app
+- Current tests: basic smoke tests (app startup, title, theme configuration)
 
 ## Configuration Files
 
@@ -161,9 +231,18 @@ lib/
 
 - All sensitive data stored in `flutter_secure_storage` (never in SharedPreferences)
 - Network calls use error handling that returns empty lists on failure (graceful degradation)
-- URL normalization: strip trailing slashes consistently
+- URL normalization: strip trailing slashes consistently in all service methods
 - `Item` model stores raw JSON in `rawJson` for flexible access to Jellyfin fields
-- Images: use `cached_network_image` for remote, with auth headers when needed
+- Images: use `cached_network_image` for remote, with auth headers when needed (see `JellyfinService.getPageImageUrl()`)
+- Background cache refresh: fire-and-forget `.then()` without awaiting, errors silently caught
+- Composite cache keys: `category` + optional `parentId` in items table
+
+## Android-Specific Notes
+
+- Android-only app (iOS not supported)
+- Core library desugaring required for Java 17 features - do not disable
+- Permissions handled via `permission_handler` (storage access for downloads)
+- Download paths stored securely; use `AuthProvider.downloadPath` to retrieve
 
 ## Notes for Development
 
@@ -172,3 +251,5 @@ lib/
 - For new cached data, decide on a "category" key for SQLite storage
 - Theme colors use `ColorScheme.fromSeed(seedColor: Colors.deepPurple)` - modify in `main.dart`
 - The app assumes books/comics only; `getUserViews` filters `CollectionType == 'books'`
+- URL auto-detection in login: tries https://, http://, then http://:8096
+- All pagination parameters: `parentId`, `recursive`, `limit`, `startIndex`

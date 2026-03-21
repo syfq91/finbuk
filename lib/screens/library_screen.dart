@@ -59,7 +59,14 @@ class LibraryScreen extends StatelessWidget {
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
-                  // Future: Navigate to favorites content
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const LibraryItemsScreen(
+                        libraryName: 'Favorites',
+                        isFavoriteOnly: true,
+                      ),
+                    ),
+                  );
                 },
               );
             }

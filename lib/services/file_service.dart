@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import '../services/jellyfin_service.dart';
 import '../services/permission_service.dart';
@@ -89,6 +90,7 @@ class FileService {
         }
       }
     } catch (e) {
+      debugPrint('Failed to scan directory for item $itemId in path $basePath: $e');
       return null;
     }
     return null;
@@ -163,7 +165,9 @@ class FileService {
       if (await file.exists()) {
         try {
           await file.delete();
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('Failed to delete partial file after cancellation at $filePath: $e');
+        }
       }
       rethrow;
     }
@@ -173,7 +177,6 @@ class FileService {
     final container = (item['Container'] ?? '').toString().toLowerCase();
     final path = (item['Path'] ?? '').toString().toLowerCase();
 
-    if (container.contains('epub') || path.endsWith('.epub')) return '.epub';
     if (container.contains('pdf') || path.endsWith('.pdf')) return '.pdf';
     if (container.contains('cbz') || path.endsWith('.cbz')) return '.cbz';
     if (container.contains('cbr') || path.endsWith('.cbr')) return '.cbr';

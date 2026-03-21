@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
@@ -64,6 +65,9 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
     );
     _extractImages();
     _initJellyfinProgress();
+
+    // Set immersive mode to hide status bar
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
   Future<void> _initJellyfinProgress() async {
@@ -290,6 +294,9 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
     // if (_tempDirPath != null) {
     //   try { Directory(_tempDirPath!).delete(recursive: true); } catch (_) {}
     // }
+
+    // Restore system UI mode
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 

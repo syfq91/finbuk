@@ -7,8 +7,8 @@ import '../providers/auth_provider.dart';
 import '../services/file_service.dart';
 import '../models/item.dart';
 import 'book_details_screen.dart';
-import 'epub_reader_screen.dart';
 import 'comic_reader_screen.dart';
+// removed
 
 class DownloadsScreen extends StatefulWidget {
   const DownloadsScreen({super.key});
@@ -72,19 +72,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       }
     }
 
-    if (ext == '.epub') {
-      if (mounted && filePath != null) {
-        navigator.push(
-          MaterialPageRoute(
-            builder: (context) => EpubReaderScreen(
-              title: item.name ?? 'EPUB Reader',
-              filePath: filePath!,
-              itemId: item.id,
-            ),
-          ),
-        );
-      }
-    } else if (ext == '.cbz' || ext == '.cbr') {
+    if (ext == '.cbz' || ext == '.cbr') {
       if (mounted) {
         navigator.push(
           MaterialPageRoute(

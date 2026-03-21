@@ -11,7 +11,6 @@ import '../repositories/book_repository.dart';
 import '../services/download_manager.dart';
 import '../services/file_service.dart';
 import '../services/jellyfin_service.dart';
-import 'epub_reader_screen.dart';
 import 'comic_reader_screen.dart';
 import 'settings_screen.dart';
 
@@ -513,17 +512,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
       }
       return;
     }
-    if (ext == '.epub') {
-      navigator.push(
-        MaterialPageRoute(
-          builder: (context) => EpubReaderScreen(
-            title: item['Name'] ?? 'EPUB Reader',
-            filePath: _localFile!.path,
-            itemId: item['Id'],
-          ),
-        ),
-      );
-    } else if (ext == '.cbz' || ext == '.cbr') {
+    if (ext == '.cbz' || ext == '.cbr') {
       navigator.push(
         MaterialPageRoute(
           builder: (context) => ComicReaderScreen(
@@ -636,7 +625,6 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     final pageCount = item['PageCount'] ?? 0;
     final container = (item['Container'] ?? '').toString().toLowerCase().trim();
     final path = (item['Path'] ?? '').toString().toLowerCase().trim();
-    final isEpub = container == 'epub' || path.endsWith('.epub');
     final isComic =
         container == 'cbz' ||
         container == 'cbr' ||
@@ -695,7 +683,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                     ),
                   const SizedBox(height: 24),
 
-                  if ((pageCount > 0 && !isPdf) || isEpub || isComic)
+                  if (isComic)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 24.0),
                       child: Row(

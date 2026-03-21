@@ -6,13 +6,15 @@ import '../repositories/book_repository.dart';
 import 'book_details_screen.dart';
 
 class LibraryItemsScreen extends StatefulWidget {
-  final String libraryId;
+  final String? libraryId;
   final String libraryName;
+  final bool isFavoriteOnly;
 
   const LibraryItemsScreen({
     super.key,
-    required this.libraryId,
+    this.libraryId,
     required this.libraryName,
+    this.isFavoriteOnly = false,
   });
 
   @override
@@ -64,9 +66,11 @@ class _LibraryItemsScreenState extends State<LibraryItemsScreen> {
         auth.serverUrl!,
         auth.userId!,
         auth.token!,
-        parentId: widget.libraryId,
+        parentId: widget.isFavoriteOnly ? null : widget.libraryId,
+        recursive: widget.isFavoriteOnly ? true : false,
         limit: _pageSize,
         startIndex: startIndex,
+        isFavorite: widget.isFavoriteOnly,
       );
       final newItems = result['Items'] as List<dynamic>;
       final totalCount = result['TotalRecordCount'] as int? ?? 0;
