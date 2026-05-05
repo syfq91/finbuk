@@ -1,11 +1,8 @@
-import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-import 'package:archive/archive.dart';
-import 'package:path/path.dart' as p;
-import 'package:manga_page_view/manga_page_view.dart';
+import 'package:provider/provider.dart' hide Locator;
+import 'package:flureadium/flureadium.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../services/jellyfin_service.dart';
@@ -27,27 +24,29 @@ class ComicReaderScreen extends StatefulWidget {
 }
 
 class _ComicReaderScreenState extends State<ComicReaderScreen> {
-  List<String> _imagePaths = [];
+  final Flureadium _flureadium = Flureadium();
+  Publication? _publication;
+  Locator? _initialLocator;
   bool _isLoading = true;
   String? _error;
 
-  // Reading settings
-  MangaPageViewMode _mode = MangaPageViewMode.paged;
-  MangaPageViewDirection _direction = MangaPageViewDirection.left;
-
   // Status bar state
-  int _currentPage = 0;
+  double _currentProgress = 0.0;
+  int _currentPosition = 0;
+  int _totalPages = 0;
   String _currentTime = '';
   Timer? _clockTimer;
 
   // UI state
   bool _isAppBarVisible = true;
-  late final MangaPageViewController _mangaController;
   final JellyfinService _jellyfinService = JellyfinService();
   int? _totalTicks;
   String? _serverUrl;
   String? _token;
   String? _userId;
+
+  // Stream subscriptions
+  StreamSubscription<Locator>? _locatorSubscription;
 
   @override
   void initState() {
@@ -57,13 +56,12 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
     _token = auth.token;
     _userId = auth.userId;
 
-    _mangaController = MangaPageViewController();
     _updateClock();
     _clockTimer = Timer.periodic(
       const Duration(seconds: 1),
       (_) => _updateClock(),
     );
-    _extractImages();
+    _openPublication();
     _initJellyfinProgress();
 
     // Set immersive mode to hide status bar
@@ -109,7 +107,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
     }
   }
 
-  Future<void> _extractImages() async {
+  Future<void> _openPublication() async {
     if (widget.filePath == null) {
       setState(() {
         _error = 'No file path provided';
@@ -118,109 +116,103 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
       return;
     }
 
-    final file = File(widget.filePath!);
-    if (!await file.exists()) {
-      setState(() {
-        _error = 'File not found: ${widget.filePath}';
-        _isLoading = false;
-      });
-      return;
-    }
-
     try {
-      // Create a temporary directory for extracted images
-      final tempDir = await Directory.systemTemp.createTemp(
-        'comic_${widget.itemId}_',
-      );
-
-      final bytes = await file.readAsBytes();
-      Archive archive;
-
-      final ext = p.extension(widget.filePath!).toLowerCase();
-      if (ext == '.cbz' || ext == '.zip') {
-        final decoder = ZipDecoder();
-        archive = decoder.decodeBytes(bytes);
-      } else if (ext == '.cbr' || ext == '.rar') {
-        throw Exception(
-          'CBR/RAR format is not supported. Please convert to CBZ (ZIP) format.',
-        );
-      } else {
-        throw Exception('Unsupported archive format: $ext');
+      // Convert filesystem path to file:// URI for Flureadium
+      String pubUrl = widget.filePath!;
+      if (!pubUrl.startsWith('file://')) {
+        pubUrl = 'file://$pubUrl';
       }
 
-      final List<String> extractedPaths = [];
+      final pub = await _flureadium.openPublication(pubUrl);
 
-      for (final fileInArchive in archive.files) {
-        if (fileInArchive.isFile) {
-          final fileName = fileInArchive.name;
-          // Check if file is an image (common extensions)
-          final lowerName = fileName.toLowerCase();
-          if (lowerName.endsWith('.jpg') ||
-              lowerName.endsWith('.jpeg') ||
-              lowerName.endsWith('.png') ||
-              lowerName.endsWith('.gif') ||
-              lowerName.endsWith('.webp') ||
-              lowerName.endsWith('.bmp') ||
-              lowerName.endsWith('.tiff')) {
-            // Extract file
-            final outputPath = p.join(tempDir.path, p.basename(fileName));
-            final outputFile = File(outputPath);
-            await outputFile.writeAsBytes(fileInArchive.content as List<int>);
-            extractedPaths.add(outputPath);
-          }
-        }
-      }
+      // Determine total pages from reading order
+      final pageCount = pub.readingOrder.length;
 
-      // Sort naturally by filename
-      extractedPaths.sort(_naturalCompare);
-
-      if (extractedPaths.isEmpty) {
-        throw Exception('No images found in the archive');
-      }
-
-      setState(() {
-        _imagePaths = extractedPaths;
-        _isLoading = false;
-      });
-
-      // Load and restore reading progress
+      // Try to restore saved position
+      Locator? savedLocator;
       try {
         final prefs = await SharedPreferences.getInstance();
-        final saved = prefs.getInt('comic_progress_${widget.itemId}');
-        if (saved != null && saved < _imagePaths.length) {
-          // Update current page state
-          setState(() {
-            _currentPage = saved;
-          });
-          // Jump to saved page after the frame
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              _mangaController.moveToPage(saved);
-            }
-          });
+        final savedJson = prefs.getString(
+          'comic_locator_${widget.itemId}',
+        );
+        if (savedJson != null) {
+          savedLocator = Locator.fromJsonString(savedJson);
         }
       } catch (e) {
-        debugPrint('Failed to load progress: $e');
+        debugPrint('Failed to load saved locator: $e');
+      }
+
+      if (mounted) {
+        setState(() {
+          _publication = pub;
+          _initialLocator = savedLocator;
+          _totalPages = pageCount;
+          _isLoading = false;
+          // Restore position from saved locator
+          if (savedLocator != null) {
+            _currentProgress =
+                savedLocator.locations?.totalProgression ?? 0.0;
+            _currentPosition = savedLocator.locations?.position ?? 0;
+          }
+        });
+      }
+    } on ReadiumException catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to open comic: ${e.message}';
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      setState(() {
-        _error = 'Failed to load comic: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load comic: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  Future<void> _saveProgress(int page) async {
+  void _onReaderReady() {
+    // Subscribe to locator changes after the reader is ready
+    _locatorSubscription?.cancel();
+    _locatorSubscription = _flureadium.onTextLocatorChanged.listen(
+      (locator) {
+        if (!mounted) return;
+
+        final progress = locator.locations?.totalProgression ?? 0.0;
+        final position = locator.locations?.position ?? 0;
+
+        setState(() {
+          _currentProgress = progress;
+          _currentPosition = position;
+          if (_isAppBarVisible) {
+            _isAppBarVisible = false;
+          }
+        });
+
+        _saveProgress(locator);
+      },
+    );
+  }
+
+  Future<void> _saveProgress(Locator locator) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('comic_progress_${widget.itemId}', page);
+      await prefs.setString(
+        'comic_locator_${widget.itemId}',
+        locator.json,
+      );
 
       // Report to Jellyfin
       if (_serverUrl != null && _token != null && _userId != null) {
-        int ticks = page; // Default if we don't know scale
-        if (_totalTicks != null && _imagePaths.length > 1) {
-          // Calculate ticks based on page percentage
-          ticks = ((page / (_imagePaths.length - 1)) * _totalTicks!).toInt();
+        final progress = locator.locations?.totalProgression ?? 0.0;
+        int ticks;
+        if (_totalTicks != null) {
+          ticks = (progress * _totalTicks!).toInt();
+        } else {
+          // Fallback: use position as ticks
+          ticks = locator.locations?.position ?? 0;
         }
 
         await _jellyfinService.reportProgress(
@@ -237,49 +229,18 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
     }
   }
 
-  int _naturalCompare(String a, String b) {
-    final nameA = p.basenameWithoutExtension(a);
-    final nameB = p.basenameWithoutExtension(b);
-
-    // Split into alternating sequences of digits and non-digits
-    final regex = RegExp(r'(\d+|\D+)');
-    final partsA = regex.allMatches(nameA).map((m) => m.group(1)!).toList();
-    final partsB = regex.allMatches(nameB).map((m) => m.group(1)!).toList();
-
-    for (int i = 0; i < partsA.length || i < partsB.length; i++) {
-      if (i >= partsA.length) return -1;
-      if (i >= partsB.length) return 1;
-
-      final partA = partsA[i];
-      final partB = partsB[i];
-
-      // Check if both are numeric
-      final int? numA = int.tryParse(partA);
-      final int? numB = int.tryParse(partB);
-
-      if (numA != null && numB != null) {
-        final cmp = numA.compareTo(numB);
-        if (cmp != 0) return cmp;
-      } else {
-        // Compare non-numeric parts case-insensitively
-        final cmp = partA.toLowerCase().compareTo(partB.toLowerCase());
-        if (cmp != 0) return cmp;
-      }
-    }
-    return 0;
-  }
-
   @override
   void dispose() {
     _clockTimer?.cancel();
-    _mangaController.dispose();
+    _locatorSubscription?.cancel();
 
     // Report stop to Jellyfin
     if (_serverUrl != null && _token != null && _userId != null) {
-      int ticks = _currentPage;
-      if (_totalTicks != null && _imagePaths.length > 1) {
-        ticks = ((_currentPage / (_imagePaths.length - 1)) * _totalTicks!)
-            .toInt();
+      int ticks;
+      if (_totalTicks != null) {
+        ticks = (_currentProgress * _totalTicks!).toInt();
+      } else {
+        ticks = _currentPosition;
       }
       _jellyfinService.reportPlaybackStopped(
         _serverUrl!,
@@ -290,10 +251,8 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
       );
     }
 
-    // Optionally clean up the temporary directory
-    // if (_tempDirPath != null) {
-    //   try { Directory(_tempDirPath!).delete(recursive: true); } catch (_) {}
-    // }
+    // Close the publication
+    _flureadium.closePublication();
 
     // Restore system UI mode
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -315,12 +274,6 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
                 bottom: false,
                 child: AppBar(
                   title: Text(widget.title),
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.settings),
-                      onPressed: _showSettingsDialog,
-                    ),
-                  ],
                 ),
               ),
             ),
@@ -362,7 +315,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
                   _isLoading = true;
                   _error = null;
                 });
-                _extractImages();
+                _openPublication();
               },
               child: const Text('Retry'),
             ),
@@ -371,52 +324,50 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
       );
     }
 
-    if (_imagePaths.isEmpty) {
+    if (_publication == null) {
       return const Center(child: Text('No pages to display'));
     }
+
+    // Compute displayed page number from progress
+    final displayPage = _totalPages > 0
+        ? (_currentProgress * _totalPages).ceil().clamp(1, _totalPages)
+        : _currentPosition + 1;
 
     return Column(
       children: [
         Expanded(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapUp: _handleTapUp,
-            child: MangaPageView(
-              key: ValueKey('${_direction.name}-${_mode.name}'),
-              controller: _mangaController,
-              mode: _mode,
-              direction: _direction,
-              pageCount: _imagePaths.length,
-              onPageChange: (index) {
-                if (mounted && index != _currentPage) {
-                  setState(() {
-                    _currentPage = index;
-                    if (_isAppBarVisible) {
-                      _isAppBarVisible = false;
-                    }
-                  });
-                  _saveProgress(index);
-                }
-              },
-              pageBuilder: (context, index) {
-                final file = File(_imagePaths[index]);
-                return Image.file(
-                  file,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.black,
-                      child: Center(
-                        child: Icon(
-                          Icons.broken_image,
-                          color: Colors.grey[400],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
+          child: ReadiumReaderWidget(
+            publication: _publication!,
+            initialLocator: _initialLocator,
+            loadingWidget: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text('Loading ${widget.title}...'),
+                ],
+              ),
             ),
+            onTap: () {
+              setState(() {
+                _isAppBarVisible = !_isAppBarVisible;
+              });
+            },
+            onLocatorChanged: (locator) {
+              if (!mounted) return;
+
+              final progress = locator.locations?.totalProgression ?? 0.0;
+              final position = locator.locations?.position ?? 0;
+
+              setState(() {
+                _currentProgress = progress;
+                _currentPosition = position;
+              });
+
+              _saveProgress(locator);
+            },
+            onReady: _onReaderReady,
           ),
         ),
         Container(
@@ -438,7 +389,9 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
               ),
               // Page indicator on the right
               Text(
-                '${_currentPage + 1} / ${_imagePaths.length}',
+                _totalPages > 0
+                    ? '$displayPage / $_totalPages'
+                    : 'Page ${_currentPosition + 1}',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -452,108 +405,5 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
         ),
       ],
     );
-  }
-
-  void _showSettingsDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Reader Settings'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Reading direction
-              const Text(
-                'Reading Direction',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonHideUnderline(
-                child: DropdownButton<MangaPageViewDirection>(
-                  value: _direction,
-                  isExpanded: true,
-                  items: const [
-                    DropdownMenuItem(
-                      value: MangaPageViewDirection.right,
-                      child: Text('Left to Right (Comics)'),
-                    ),
-                    DropdownMenuItem(
-                      value: MangaPageViewDirection.left,
-                      child: Text('Right to Left (Manga)'),
-                    ),
-                    DropdownMenuItem(
-                      value: MangaPageViewDirection.down,
-                      child: Text('Top to Bottom'),
-                    ),
-                    DropdownMenuItem(
-                      value: MangaPageViewDirection.up,
-                      child: Text('Bottom to Top'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      this.setState(() {
-                        _direction = value;
-                      });
-                    }
-                  },
-                ),
-              ),
-              const Divider(height: 24),
-              // View mode
-              const Text(
-                'View Mode',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonHideUnderline(
-                child: DropdownButton<MangaPageViewMode>(
-                  value: _mode,
-                  isExpanded: true,
-                  items: const [
-                    DropdownMenuItem(
-                      value: MangaPageViewMode.paged,
-                      child: Text('Paged (One page at a time)'),
-                    ),
-                    DropdownMenuItem(
-                      value: MangaPageViewMode.continuous,
-                      child: Text('Continuous (Long strip)'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      this.setState(() {
-                        _mode = value;
-                      });
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _handleTapUp(TapUpDetails details) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final dx = details.localPosition.dx;
-    final threshold = screenWidth / 3;
-
-    if (dx >= threshold && dx <= threshold * 2) {
-      // Middle tap: toggle AppBar visibility
-      setState(() {
-        _isAppBarVisible = !_isAppBarVisible;
-      });
-    }
-    // Left and right taps do nothing (page navigation removed)
   }
 }

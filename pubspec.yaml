@@ -12,7 +12,6 @@ dependencies:
     sdk: flutter
 
   dio: ^5.9.1
-  archive: ^3.6.1
   flureadium: ^0.11.0
   flutter_localizations:
     sdk: flutter

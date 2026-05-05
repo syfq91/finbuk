@@ -1,0 +1,4 @@
+-keep class dev.mulev.flureadium.** { *; }
+-dontwarn dev.mulev.flureadium.**
+-keep class org.readium.** { *; }
+-dontwarn org.readium.**

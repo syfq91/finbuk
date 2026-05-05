@@ -69,7 +69,7 @@ lib/
     ├── library_screen.dart       # Folder/collection browser
     ├── library_items_screen.dart # Items within a folder
     ├── book_details_screen.dart  # Book info + actions
-    ├── comic_reader_screen.dart  # CBZ/CBR reader (manga_page_view)
+    ├── comic_reader_screen.dart  # CBZ reader (flureadium / Readium)
     ├── downloads_screen.dart     # Download management
     ├── settings_screen.dart      # App settings
     └── login_screen.dart         # Login form
@@ -192,8 +192,9 @@ class Item {
 
 ### Reader Notes
 
-- **Comics**: `manga_page_view` package with page-by-page navigation
-  - Loading state displays book title
+- **Comics**: `flureadium` package (Readium toolkit) with native CBZ support
+  - Uses `ReadiumReaderWidget` for image-based navigation
+  - Progress tracked via `Locator` objects (JSON-serialized to SharedPreferences)
   - See `comic_reader_screen.dart` for implementation
 - Supports offline files from downloads
 

@@ -8,8 +8,7 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 
 - **Jellyfin Integration**: Connect to any Jellyfin server to access your personal media library
 - **Authentication**: Secure login with credential storage using flutter_secure_storage
-- **Comic Reader**: Manga/comic reader with page-by-page navigation and zoom support
-  - Loading state displays book title
+- **Comic Reader**: Readium-based comic reader with native CBZ support and page navigation
 - **Offline Downloads**: Download books for offline reading with progress tracking
 - **Library Organization**: Browse by collections, folders, and categories
 - **Local Database**: SQLite-based caching for faster library loading and download management
@@ -24,7 +23,7 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 - **State Management**: Provider
 - **API**: Dio for Jellyfin API communication
 - **Local Storage**: SQLite (sqflite), SharedPreferences, FlutterSecureStorage
-- **Readers**: manga_page_view (comics/manga)
+- **Readers**: flureadium (comics via Readium toolkit)
 - **File Handling**: file_picker, permission_handler, path
 
 ## Project Structure
@@ -51,7 +50,7 @@ lib/
     ├── library_screen.dart      # Folder/collection browser
     ├── library_items_screen.dart # Items within a folder
     ├── book_details_screen.dart # Book info + actions
-    ├── comic_reader_screen.dart # CBZ/CBR reader with manga_page_view
+    ├── comic_reader_screen.dart # CBZ reader with flureadium (Readium)
     ├── downloads_screen.dart    # Download management
     ├── settings_screen.dart     # App settings
     └── login_screen.dart        # Login form
@@ -91,7 +90,7 @@ The app connects to a Jellyfin server specified during login. Ensure your Jellyf
 
 ### Supported Formats
 
-- **Comics/Manga**: `.cbz`, `.cbr` (via archive extraction)
+- **Comics/Manga**: `.cbz` (native Readium support via flureadium)
 - **Images**: `.jpg`, `.jpeg`, `.png`, `.webp` for comic pages
 
 ## Building
@@ -119,7 +118,7 @@ flutter build appbundle --release
 
 Key dependencies:
 - `dio`: HTTP client for Jellyfin API
-- `manga_page_view`: Comic/manga page viewing
+- `flureadium`: Comic/book reading (Readium toolkit wrapper)
 - `sqflite`: Local database for caching
 - `provider`: State management
 - `flutter_secure_storage`: Secure credential storage
