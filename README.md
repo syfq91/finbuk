@@ -80,7 +80,7 @@ lib/
 └── services/                      # Low-level operations (API, DB, files, downloads)
 ```
 
-See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
+See [AGENTS.md](AGENTS.md) for detailed architecture documentation.
 
 ## Development
 
