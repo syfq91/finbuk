@@ -21,7 +21,6 @@ class DownloadTask {
   final String url;
   final String token;
   final String fileExtension;
-  final String? customPath;
   final String? fileName;
 
   DownloadStatus status;
@@ -36,7 +35,6 @@ class DownloadTask {
     required this.url,
     required this.token,
     required this.fileExtension,
-    this.customPath,
     this.fileName,
     this.status = DownloadStatus.notStarted,
     this.progress = 0.0,
@@ -95,7 +93,6 @@ class DownloadManager {
     required String url,
     required String token,
     required String extension,
-    String? customPath,
     String? fileName,
     bool enqueueIfBusy = true,
   }) async {
@@ -120,7 +117,6 @@ class DownloadManager {
       url: url,
       token: token,
       fileExtension: extension,
-      customPath: customPath,
       fileName: fileName,
       status: DownloadStatus.downloading,
     );
@@ -170,11 +166,7 @@ class DownloadManager {
 
     // Clean up partial file if exists
     try {
-      final file = await _fileService.getBookFile(
-        itemId,
-        task.customPath,
-        task.fileExtension,
-      );
+      final file = await _fileService.getBookFile(itemId, task.fileExtension);
       if (file != null && await file.exists()) {
         await file.delete();
       }
@@ -236,7 +228,6 @@ class DownloadManager {
         task.url,
         task.token,
         task.itemId,
-        task.customPath,
         task.fileExtension,
         (received, total) {
           if (total > 0) {

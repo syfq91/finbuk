@@ -30,8 +30,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
   Future<void> _loadDownloads() async {
     setState(() => _isLoading = true);
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final items = await _fileService.getDownloadedItems(auth.downloadPath);
+    final items = await _fileService.getDownloadedItems();
     setState(() {
       _downloadedItems = items;
       _isLoading = false;
@@ -39,14 +38,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   }
 
   Future<void> _deleteItem(Item item) async {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
     final ext = _fileService.getExtension(item.rawJson);
-    await _fileService.deleteDownloadedItem(item.id, auth.downloadPath, ext);
+    await _fileService.deleteDownloadedItem(item.id, ext);
     _loadDownloads();
   }
 
   Future<void> _navigateToReader(Item item) async {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
     final ext = _fileService.getExtension(item.rawJson).toLowerCase();
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -62,9 +59,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     String? filePath;
 
     if (ext.isNotEmpty) {
-      final basePath = await _fileService.getEffectiveDownloadPath(
-        auth.downloadPath,
-      );
+      final basePath = await _fileService.getEffectiveDownloadPath();
       final path = p.join(basePath, '${item.id}$ext');
       final file = File(path);
       if (await file.exists()) {

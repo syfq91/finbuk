@@ -12,7 +12,6 @@ import '../services/download_manager.dart';
 import '../services/file_service.dart';
 import '../services/jellyfin_service.dart';
 import 'comic_reader_screen.dart';
-import 'settings_screen.dart';
 
 class BookDetailsScreen extends StatefulWidget {
   final String itemId;
@@ -140,12 +139,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     }
 
     try {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      final file = await _tryFindLocalFile(
-        widget.itemId,
-        auth.downloadPath,
-        item,
-      );
+      final file = await _tryFindLocalFile(widget.itemId, item);
       if (mounted) {
         setState(() {
           _localFile = file;
@@ -170,12 +164,11 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
 
   Future<File?> _tryFindLocalFile(
     String itemId,
-    String? customPath,
     Map<String, dynamic> item,
   ) async {
     final ext = _fileServiceGetExtensionSafe(item);
     if (ext.isNotEmpty) {
-      return await _fileService.getBookFile(itemId, customPath, ext);
+      return await _fileService.getBookFile(itemId, ext);
     }
     return null;
   }
@@ -300,26 +293,6 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     AuthProvider auth,
     Map<String, dynamic> item,
   ) async {
-    // Check if download path is set
-    if (auth.downloadPath == null || auth.downloadPath!.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Please set a download location in Settings.'),
-            action: SnackBarAction(
-              label: 'Settings',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                );
-              },
-            ),
-          ),
-        );
-      }
-      return;
-    }
-
     final ext = _fileServiceGetExtensionSafe(item);
     if (ext.isEmpty) {
       if (mounted) {
@@ -338,7 +311,6 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
       url: auth.serverUrl!,
       token: auth.token!,
       extension: ext,
-      customPath: auth.downloadPath,
     );
     // UI updates handled by listener
   }
@@ -404,33 +376,9 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
-    // Check if download path is set
-    if (auth.downloadPath == null || auth.downloadPath!.isEmpty) {
-      if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: const Text('Please set a download location in Settings.'),
-            action: SnackBarAction(
-              label: 'Settings',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                );
-              },
-            ),
-          ),
-        );
-      }
-      return;
-    }
-
     // Check if local file already exists
     if (_localFile == null) {
-      final file = await _tryFindLocalFile(
-        widget.itemId,
-        auth.downloadPath,
-        item,
-      );
+      final file = await _tryFindLocalFile(widget.itemId, item);
       if (file != null && mounted) {
         setState(() {
           _localFile = file;
@@ -484,7 +432,6 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
       url: auth.serverUrl!,
       token: auth.token!,
       extension: ext,
-      customPath: auth.downloadPath,
     );
 
     // Wait for completion
@@ -559,23 +506,6 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     Map<String, dynamic> item,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
-    // Check if download path is set
-    if (auth.downloadPath == null || auth.downloadPath!.isEmpty) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: const Text('Please set a download location in Settings.'),
-          action: SnackBarAction(
-            label: 'Settings',
-            onPressed: () {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
-            },
-          ),
-        ),
-      );
-      return;
-    }
 
     // Cancel any active download for this item
     final task = _downloadManager.getTask(widget.itemId);
@@ -587,7 +517,6 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     try {
       await _fileService.deleteDownloadedItem(
         widget.itemId,
-        auth.downloadPath,
         _fileServiceGetExtensionSafe(item),
       );
       if (mounted) {

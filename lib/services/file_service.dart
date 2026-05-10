@@ -3,30 +3,21 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import '../services/jellyfin_service.dart';
-import '../services/permission_service.dart';
 import '../services/database_service.dart';
 import '../models/item.dart';
+import 'package:path_provider/path_provider.dart';
 
 class FileService {
   final JellyfinService _jellyfinService = JellyfinService();
-  final PermissionService _permissionService = PermissionService();
   final DatabaseService _dbService = DatabaseService();
 
-  Future<String> getEffectiveDownloadPath(String? customPath) async {
-    if (customPath != null && customPath.isNotEmpty) {
-      return customPath;
-    }
-    throw Exception(
-      'Download path is not set. Please set a download location in Settings.',
-    );
+  Future<String> getEffectiveDownloadPath() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return directory.path;
   }
 
-  Future<File?> getBookFile(
-    String itemId,
-    String? customPath,
-    String extension,
-  ) async {
-    final basePath = await getEffectiveDownloadPath(customPath);
+  Future<File?> getBookFile(String itemId, String extension) async {
+    final basePath = await getEffectiveDownloadPath();
 
     // Check downloads DB for a record
     final download = await _dbService.getDownload(itemId);
@@ -54,11 +45,8 @@ class FileService {
   /// Scans the download directory for a file whose basename (without extension)
   /// matches the given itemId. This handles cases where the stored file extension
   /// differs from the current item metadata extension.
-  Future<File?> findDownloadedFileByItemId(
-    String itemId,
-    String? customPath,
-  ) async {
-    final basePath = await getEffectiveDownloadPath(customPath);
+  Future<File?> findDownloadedFileByItemId(String itemId) async {
+    final basePath = await getEffectiveDownloadPath();
 
     // Check downloads DB first
     final download = await _dbService.getDownload(itemId);
@@ -90,7 +78,9 @@ class FileService {
         }
       }
     } catch (e) {
-      debugPrint('Failed to scan directory for item $itemId in path $basePath: $e');
+      debugPrint(
+        'Failed to scan directory for item $itemId in path $basePath: $e',
+      );
       return null;
     }
     return null;
@@ -100,13 +90,12 @@ class FileService {
     String url,
     String token,
     String itemId,
-    String? customPath,
     String extension,
     void Function(int received, int total)? onProgress,
     CancelToken? cancelToken, {
     String? fileName,
   }) async {
-    final basePath = await getEffectiveDownloadPath(customPath);
+    final basePath = await getEffectiveDownloadPath();
 
     String effectiveFileName;
     if (fileName != null && fileName.isNotEmpty) {
@@ -136,13 +125,6 @@ class FileService {
     // Ensure directory exists
     final dir = Directory(basePath);
     if (!await dir.exists()) {
-      if (customPath != null && customPath.isNotEmpty) {
-        final hasPermission = await _permissionService
-            .requestStoragePermission();
-        if (!hasPermission) {
-          throw Exception('Storage permission required for custom path');
-        }
-      }
       await dir.create(recursive: true);
     }
 
@@ -166,7 +148,9 @@ class FileService {
         try {
           await file.delete();
         } catch (e) {
-          debugPrint('Failed to delete partial file after cancellation at $filePath: $e');
+          debugPrint(
+            'Failed to delete partial file after cancellation at $filePath: $e',
+          );
         }
       }
       rethrow;
@@ -178,14 +162,15 @@ class FileService {
     final path = (item['Path'] ?? '').toString().toLowerCase();
 
     if (container.contains('pdf') || path.endsWith('.pdf')) return '.pdf';
+    if (container.contains('epub') || path.endsWith('.epub')) return '.epub';
     if (container.contains('cbz') || path.endsWith('.cbz')) return '.cbz';
     if (container.contains('cbr') || path.endsWith('.cbr')) return '.cbr';
 
     return '';
   }
 
-  Future<List<Item>> getDownloadedItems(String? customPath) async {
-    final basePath = await getEffectiveDownloadPath(customPath);
+  Future<List<Item>> getDownloadedItems() async {
+    final basePath = await getEffectiveDownloadPath();
     final List<Item> downloadedItems = [];
 
     // Get all download records from DB
@@ -234,12 +219,8 @@ class FileService {
     return downloadedItems;
   }
 
-  Future<void> deleteDownloadedItem(
-    String itemId,
-    String? customPath,
-    String? extension,
-  ) async {
-    final basePath = await getEffectiveDownloadPath(customPath);
+  Future<void> deleteDownloadedItem(String itemId, String? extension) async {
+    final basePath = await getEffectiveDownloadPath();
 
     // Check if we have a download record
     final download = await _dbService.getDownload(itemId);

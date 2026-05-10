@@ -1,74 +1,43 @@
 # Finbuk
 
-A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.org/) that focuses on book and comic reading.
+A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.org/) focused on book and comic reading with offline support.
 
 > **Note**: This app is currently Android-only.
 
 ## Features
 
 - **Jellyfin Integration**: Connect to any Jellyfin server to access your personal media library
-- **Authentication**: Secure login with credential storage using flutter_secure_storage
-- **Comic Reader**: Readium-based comic reader with native CBZ support and page navigation
-- **Offline Downloads**: Download books for offline reading with progress tracking
-- **Library Organization**: Browse by collections, folders, and categories
+- **Secure Authentication**: Login with username/password, credentials stored securely via `flutter_secure_storage`
+- **Library Browsing**: Browse collections, folders, and view latest additions with cover art
+- **Comic Reader**: Readium-based CBZ/CBR reader with page navigation, progress tracking, and immersive fullscreen mode
+- **Offline Downloads**: Download books for offline reading with concurrent download queue, progress tracking, and pause/resume support
+- **Favorites & Read Status**: Mark items as favorite or played/unplayed
 - **Local Database**: SQLite-based caching for faster library loading and download management
-- **Dark/Light Theme**: Material Design 3 with dynamic theme switching
-- **Responsive UI**: Intuitive navigation with bottom tab bar and navigation rail
-- **Android-Only**: Optimized for Android with core library desugaring for modern Java compatibility
+- **Dark/Light/System Theme**: Material Design 3 with dynamic theme switching
+- **Responsive UI**: Adaptive layout with bottom navigation bar (mobile) or navigation rail (tablet/desktop)
+- **Playback Progress**: Reports reading progress back to Jellyfin server
 
 ## Tech Stack
 
-- **Framework**: Flutter 3.10+
+- **Framework**: Flutter 3.10+ (Android-only)
 - **Language**: Dart
-- **State Management**: Provider
-- **API**: Dio for Jellyfin API communication
-- **Local Storage**: SQLite (sqflite), SharedPreferences, FlutterSecureStorage
-- **Readers**: flureadium (comics via Readium toolkit)
-- **File Handling**: file_picker, permission_handler, path
+- **State Management**: Provider (ChangeNotifier)
+- **HTTP Client**: Dio
+- **Local Storage**: SQLite (sqflite), SharedPreferences, flutter_secure_storage, path_provider
+- **Comic Reader**: flureadium (Readium toolkit)
+- **Build**: Java 17 with core library desugaring
 
-## Project Structure
+## Prerequisites
 
-```
-lib/
-├── main.dart                     # App entry point, MultiProvider setup, AuthWrapper
-├── models/                       # Data models
-│   └── item.dart                # Media item model with rawJson
-├── providers/                    # State management (ChangeNotifier)
-│   ├── auth_provider.dart       # Auth state, credentials in flutter_secure_storage
-│   └── theme_provider.dart      # Theme/dark mode state
-├── repositories/                 # Business logic, data aggregation, caching
-│   └── book_repository.dart     # Coordinates API + SQLite caching
-├── services/                     # Low-level operations
-│   ├── jellyfin_service.dart    # Jellyfin API client (Dio)
-│   ├── database_service.dart    # SQLite operations
-│   ├── file_service.dart        # File system operations
-│   ├── download_manager.dart    # Download queue/progress
-│   └── permission_service.dart  # Android permissions requests
-└── screens/                      # UI widgets
-    ├── main_screen.dart         # Navigation container (bottom bar / rail)
-    ├── home_screen.dart         # Dashboard with resume items
-    ├── library_screen.dart      # Folder/collection browser
-    ├── library_items_screen.dart # Items within a folder
-    ├── book_details_screen.dart # Book info + actions
-    ├── comic_reader_screen.dart # CBZ reader with flureadium (Readium)
-    ├── downloads_screen.dart    # Download management
-    ├── settings_screen.dart     # App settings
-    └── login_screen.dart        # Login form
-```
+- Flutter SDK (>=3.10.8)
+- Android Studio or VS Code with Flutter extensions
+- A Jellyfin server with book/comic libraries
 
 ## Getting Started
 
-### Prerequisites
-
-- Flutter SDK (>=3.10.8)
-- Android Studio / VS Code with Flutter extensions
-- A Jellyfin server with book/comic libraries
-
-### Installation
-
 1. Clone the repository:
    ```bash
-   git clone https://github.com/syfq91/finbuk.git
+   git clone <repository-url>
    cd finbuk
    ```
 
@@ -82,16 +51,10 @@ lib/
    flutter run
    ```
 
-## Configuration
+## Supported Formats
 
-The app connects to a Jellyfin server specified during login. Ensure your Jellyfin server:
-- Is accessible from your device
-- Has user libraries containing comics (CBZ, CBR formats)
-
-### Supported Formats
-
-- **Comics/Manga**: `.cbz` (native Readium support via flureadium)
-- **Images**: `.jpg`, `.jpeg`, `.png`, `.webp` for comic pages
+- **Comics**: `.cbz` (native Readium support via flureadium)
+- **Coming**: `.cbr` support, `.epub` support
 
 ## Building
 
@@ -100,31 +63,55 @@ The app connects to a Jellyfin server specified during login. Ensure your Jellyf
 flutter build apk --release
 ```
 
-### Android App Bundle (for Play Store)
+### Android App Bundle
 ```bash
 flutter build appbundle --release
 ```
 
-## Development Notes
+## Project Structure
 
-- Uses Material Design 3 with dynamic color theming
-- All sensitive data (credentials, tokens) stored securely with flutter_secure_storage
-- SQLite database caches library items to reduce API calls
-- Download manager supports pause/resume and progress tracking
-- Permission handling for storage access on Android
-- Core library desugaring enabled for Java 17 compatibility (android/app/build.gradle.kts)
+```
+lib/
+├── main.dart                     # App entry, MultiProvider, AuthWrapper
+├── models/                        # Data models (Item)
+├── providers/                     # State management (AuthProvider, ThemeProvider)
+├── repositories/                  # Business logic, API + SQLite caching
+├── screens/                       # UI screens (Home, Library, Reader, etc.)
+└── services/                      # Low-level operations (API, DB, files, downloads)
+```
+
+See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
+
+## Development
+
+- Uses Material Design 3 with `ColorScheme.fromSeed(seedColor: Colors.deepPurple)`
+- All sensitive data stored in `flutter_secure_storage` (never in SharedPreferences)
+- SQLite caches library items to reduce API calls
+- Download manager supports up to 3 concurrent downloads with queue management
+- Core library desugaring enabled for Java 17 compatibility
 
 ## Dependencies
 
 Key dependencies:
-- `dio`: HTTP client for Jellyfin API
-- `flureadium`: Comic/book reading (Readium toolkit wrapper)
-- `sqflite`: Local database for caching
-- `provider`: State management
-- `flutter_secure_storage`: Secure credential storage
-- `cached_network_image`: Optimized image loading
 
-See [pubspec.yaml](pubspec.yaml) for complete dependency list.
+- `dio`: HTTP client for Jellyfin API communication
+- `flureadium`: Readium-based comic/book reading engine
+- `sqflite` + `sqlite3_flutter_libs`: Local SQLite database for caching
+- `provider`: Reactive state management
+- `flutter_secure_storage`: Secure credential and token storage
+- `cached_network_image`: Optimized image loading with auth headers
+- `path_provider`: Access to internal app storage directories
+
+See [pubspec.yaml](pubspec.yaml) for the complete dependency list.
+
+## Contributing
+
+Contributions are welcome. When making changes:
+
+1. Follow the existing layered architecture (screens → repositories → services)
+2. Run `flutter analyze` before committing
+3. Format code with `dart format .`
+4. Add tests for new features
 
 ## License
 
@@ -133,4 +120,5 @@ See [pubspec.yaml](pubspec.yaml) for complete dependency list.
 ## Acknowledgments
 
 - [Jellyfin](https://jellyfin.org/) - Free and open-source media server
+- [Readium](https://readium.org/) - Open-source toolkit for digital publications
 - Flutter community for excellent packages and documentation

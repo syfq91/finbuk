@@ -132,9 +132,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
       Locator? savedLocator;
       try {
         final prefs = await SharedPreferences.getInstance();
-        final savedJson = prefs.getString(
-          'comic_locator_${widget.itemId}',
-        );
+        final savedJson = prefs.getString('comic_locator_${widget.itemId}');
         if (savedJson != null) {
           savedLocator = Locator.fromJsonString(savedJson);
         }
@@ -150,8 +148,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
           _isLoading = false;
           // Restore position from saved locator
           if (savedLocator != null) {
-            _currentProgress =
-                savedLocator.locations?.totalProgression ?? 0.0;
+            _currentProgress = savedLocator.locations?.totalProgression ?? 0.0;
             _currentPosition = savedLocator.locations?.position ?? 0;
           }
         });
@@ -176,33 +173,28 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
   void _onReaderReady() {
     // Subscribe to locator changes after the reader is ready
     _locatorSubscription?.cancel();
-    _locatorSubscription = _flureadium.onTextLocatorChanged.listen(
-      (locator) {
-        if (!mounted) return;
+    _locatorSubscription = _flureadium.onTextLocatorChanged.listen((locator) {
+      if (!mounted) return;
 
-        final progress = locator.locations?.totalProgression ?? 0.0;
-        final position = locator.locations?.position ?? 0;
+      final progress = locator.locations?.totalProgression ?? 0.0;
+      final position = locator.locations?.position ?? 0;
 
-        setState(() {
-          _currentProgress = progress;
-          _currentPosition = position;
-          if (_isAppBarVisible) {
-            _isAppBarVisible = false;
-          }
-        });
+      setState(() {
+        _currentProgress = progress;
+        _currentPosition = position;
+        if (_isAppBarVisible) {
+          _isAppBarVisible = false;
+        }
+      });
 
-        _saveProgress(locator);
-      },
-    );
+      _saveProgress(locator);
+    });
   }
 
   Future<void> _saveProgress(Locator locator) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-        'comic_locator_${widget.itemId}',
-        locator.json,
-      );
+      await prefs.setString('comic_locator_${widget.itemId}', locator.json);
 
       // Report to Jellyfin
       if (_serverUrl != null && _token != null && _userId != null) {
@@ -272,9 +264,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
               right: 0,
               child: SafeArea(
                 bottom: false,
-                child: AppBar(
-                  title: Text(widget.title),
-                ),
+                child: AppBar(title: Text(widget.title)),
               ),
             ),
         ],

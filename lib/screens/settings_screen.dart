@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
-import '../services/permission_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -139,37 +137,7 @@ class SettingsScreen extends StatelessWidget {
                     // Placeholder
                   },
                 ),
-                ListTile(
-                  leading: const Icon(Icons.download_outlined),
-                  title: const Text('Download Location'),
-                  subtitle: Text(
-                    auth.downloadPath ?? 'Not set (Default: Documents)',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () async {
-                    final permissionService = PermissionService();
-                    final hasPermission = await permissionService
-                        .requestStoragePermission();
-                    if (!hasPermission) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'All Files Access permission is required to save books to custom folders on this Android version.',
-                            ),
-                          ),
-                        );
-                      }
-                      return;
-                    }
 
-                    String? selectedDirectory = await FilePicker.platform
-                        .getDirectoryPath();
-                    if (selectedDirectory != null) {
-                      await auth.setDownloadPath(selectedDirectory);
-                    }
-                  },
-                ),
                 ListTile(
                   leading: const Icon(Icons.help_outline),
                   title: const Text('Help & Support'),

@@ -1,0 +1,15 @@
+Analyzing finbuk...                                             
+
+warning • A value of type 'void' can't be returned by the 'onError' handler because it must be assignable to 'FutureOr<Null>' • lib/repositories/book_repository.dart:28:20 • invalid_return_type_for_catch_error
+warning • A value of type 'void' can't be returned by the 'onError' handler because it must be assignable to 'FutureOr<Null>' • lib/repositories/book_repository.dart:65:20 • invalid_return_type_for_catch_error
+warning • A value of type 'void' can't be returned by the 'onError' handler because it must be assignable to 'FutureOr<Null>' • lib/repositories/book_repository.dart:104:20 • invalid_return_type_for_catch_error
+warning • A value of type 'void' can't be returned by the 'onError' handler because it must be assignable to 'FutureOr<Null>' • lib/repositories/book_repository.dart:171:22 • invalid_return_type_for_catch_error
+warning • A value of type 'void' can't be returned by the 'onError' handler because it must be assignable to 'FutureOr<Null>' • lib/repositories/book_repository.dart:223:20 • invalid_return_type_for_catch_error
+warning • The value of the local variable 'isPdf' isn't used • lib/screens/book_details_screen.dart:634:11 • unused_local_variable
+  error • The constructor being called isn't a const constructor • lib/screens/epub_reader_screen.dart:47:28 • const_with_non_const
+  error • The argument type 'num' can't be assigned to the parameter type 'double?'.  • lib/screens/epub_reader_screen.dart:132:25 • argument_type_not_assignable
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/screens/epub_reader_screen.dart:152:49 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/screens/epub_reader_screen.dart:153:37 • deprecated_member_use
+warning • Dead code • lib/widgets/epub/epub_settings_sheet.dart:165:43 • dead_code
+warning • The left operand can't be null, so the right operand is never executed • lib/widgets/epub/epub_settings_sheet.dart:165:46 • dead_null_aware_expression
+

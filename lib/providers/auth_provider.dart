@@ -10,14 +10,12 @@ class AuthProvider with ChangeNotifier {
   String? _token;
   String? _userId;
   String? _username;
-  String? _downloadPath;
   bool _isLoading = false;
 
   String? get serverUrl => _serverUrl;
   String? get token => _token;
   String? get userId => _userId;
   String? get username => _username;
-  String? get downloadPath => _downloadPath;
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _token != null;
 
@@ -30,13 +28,6 @@ class AuthProvider with ChangeNotifier {
     _token = await _secureStorage.read(key: 'token');
     _userId = await _secureStorage.read(key: 'userId');
     _username = await _secureStorage.read(key: 'username');
-    _downloadPath = await _secureStorage.read(key: 'downloadPath');
-    notifyListeners();
-  }
-
-  Future<void> setDownloadPath(String path) async {
-    _downloadPath = path;
-    await _secureStorage.write(key: 'downloadPath', value: path);
     notifyListeners();
   }
 
