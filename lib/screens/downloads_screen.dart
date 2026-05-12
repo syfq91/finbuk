@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
@@ -58,13 +56,10 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     }
     String? filePath;
 
-    if (ext.isNotEmpty) {
-      final basePath = await _fileService.getEffectiveDownloadPath();
-      final path = p.join(basePath, '${item.id}$ext');
-      final file = File(path);
-      if (await file.exists()) {
-        filePath = path;
-      }
+    // Use FileService to find the file regardless of how it was named on disk
+    final file = await _fileService.findDownloadedFileByItemId(item.id);
+    if (file != null) {
+      filePath = file.path;
     }
 
     if (ext == '.cbz' || ext == '.cbr') {

@@ -4,11 +4,12 @@ Guidance for AI coding assistants working in this repository.
 
 ## Project Overview
 
-Finbuk is a Flutter **Android-only** Jellyfin client for reading comics (CBZ) and potentially EPUBs with offline support. It connects to a Jellyfin server, authenticates users, and provides comic reading with local caching and download capabilities.
+Finbuk is a Flutter **Android-only** Jellyfin client for reading comics (CBZ) and EPUBs with offline support. It connects to a Jellyfin server, authenticates users, and provides a premium reading experience with local caching and download capabilities.
 
 - **Tech Stack**: Flutter 3.10+, Dart, Provider (state management), Dio (HTTP), SQLite (sqflite), flutter_secure_storage
 - **Build**: Java 17 with core library desugaring enabled
 - **Target OS**: Android only (iOS is NOT supported)
+- **Reading Engine**: flureadium (Readium toolkit) for both comics and EPUBs
 
 ## Development Commands
 
@@ -121,3 +122,9 @@ The codebase follows a layered architecture: **screens → repositories → serv
 - `ComicReaderScreen` modifies `SystemChrome` in `initState`/`dispose` for immersive mode.
 - `DownloadManager` uses internal stream controllers per item to survive widget rebuilds.
 - Background cache refresh is "fire-and-forget" (don't await the API call after returning cached data).
+- **Reader Implementation (Readium/Flureadium)**:
+    - Both `ComicReaderScreen` and `EpubReaderScreen` use `ReadiumReaderWidget`.
+    - `ReadiumReaderWidget` MUST NOT be wrapped in `GestureDetector` or other gesture-intercepting widgets as it interferes with Android's native platform view rendering (Hybrid Composition).
+    - EventChannel subscriptions (`onTextLocatorChanged`, `onErrorEvent`, `onLocatorChanged`) MUST be performed inside the `onReady` callback of `ReadiumReaderWidget` to ensure native channels are registered before listening.
+    - Android's `MainActivity` MUST extend `FlutterFragmentActivity` for the reader to function.
+    - Hardware acceleration MUST be enabled in `AndroidManifest.xml`.

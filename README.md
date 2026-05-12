@@ -9,8 +9,9 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 - **Jellyfin Integration**: Connect to any Jellyfin server to access your personal media library
 - **Secure Authentication**: Login with username/password, credentials stored securely via `flutter_secure_storage`
 - **Library Browsing**: Browse collections, folders, and view latest additions with cover art
-- **Comic Reader**: Readium-based CBZ/CBR reader with page navigation, progress tracking, and immersive fullscreen mode
-- **Offline Downloads**: Download books for offline reading with concurrent download queue, progress tracking, and pause/resume support
+- **Advanced Readers**: High-performance, Readium-based readers for both Comics (CBZ/CBR) and Books (EPUB)
+- **EPUB Customization**: Personalize your reading experience with adjustable font sizes, themes, and layouts
+- **Offline Downloads**: Download content to internal app storage for offline reading with background progress tracking
 - **Favorites & Read Status**: Mark items as favorite or played/unplayed
 - **Local Database**: SQLite-based caching for faster library loading and download management
 - **Dark/Light/System Theme**: Material Design 3 with dynamic theme switching
@@ -53,8 +54,8 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 
 ## Supported Formats
 
-- **Comics**: `.cbz` (native Readium support via flureadium)
-- **Coming**: `.cbr` support, `.epub` support
+- **Comics**: `.cbz`, `.cbr` (native Readium support via flureadium)
+- **Books**: `.epub` (full support via flureadium)
 
 ## Building
 
@@ -121,4 +122,5 @@ Contributions are welcome. When making changes:
 
 - [Jellyfin](https://jellyfin.org/) - Free and open-source media server
 - [Readium](https://readium.org/) - Open-source toolkit for digital publications
+- [flureadium](https://github.com/mulev/flureadium) - Flutter plugin for Readium toolkits
 - Flutter community for excellent packages and documentation

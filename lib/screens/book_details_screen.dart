@@ -12,6 +12,7 @@ import '../services/download_manager.dart';
 import '../services/file_service.dart';
 import '../services/jellyfin_service.dart';
 import 'comic_reader_screen.dart';
+import 'epub_reader_screen.dart';
 
 class BookDetailsScreen extends StatefulWidget {
   final String itemId;
@@ -469,6 +470,16 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
           ),
         ),
       );
+    } else if (ext == '.epub') {
+      navigator.push(
+        MaterialPageRoute(
+          builder: (context) => EpubReaderScreen(
+            itemId: item['Id'],
+            title: item['Name'] ?? 'EPUB Reader',
+            filePath: _localFile?.path,
+          ),
+        ),
+      );
     } else {
       if (navigator.context.mounted) {
         ScaffoldMessenger.of(navigator.context).showSnackBar(
@@ -559,8 +570,9 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
         container == 'cbr' ||
         path.endsWith('.cbz') ||
         path.endsWith('.cbr');
-    final ext = _fileServiceGetExtensionSafe(item);
-    final isPdf = ext == '.pdf';
+    final isEpub =
+        container == 'epub' ||
+        path.endsWith('.epub');
 
     final imageUrl = '${auth.serverUrl}/Items/${item['Id']}/Images/Primary';
     final backdropUrl =
@@ -612,7 +624,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                     ),
                   const SizedBox(height: 24),
 
-                  if (isComic)
+                  if (isComic || isEpub)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 24.0),
                       child: Row(

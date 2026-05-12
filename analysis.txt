@@ -1,0 +1,14 @@
+Analyzing finbuk...                                             
+
+warning • A value of type 'void' can't be returned by the 'onError' handler because it must be assignable to 'FutureOr<Null>' • lib/repositories/book_repository.dart:28:20 • invalid_return_type_for_catch_error
+warning • A value of type 'void' can't be returned by the 'onError' handler because it must be assignable to 'FutureOr<Null>' • lib/repositories/book_repository.dart:65:20 • invalid_return_type_for_catch_error
+warning • A value of type 'void' can't be returned by the 'onError' handler because it must be assignable to 'FutureOr<Null>' • lib/repositories/book_repository.dart:104:20 • invalid_return_type_for_catch_error
+warning • A value of type 'void' can't be returned by the 'onError' handler because it must be assignable to 'FutureOr<Null>' • lib/repositories/book_repository.dart:171:22 • invalid_return_type_for_catch_error
+warning • A value of type 'void' can't be returned by the 'onError' handler because it must be assignable to 'FutureOr<Null>' • lib/repositories/book_repository.dart:223:20 • invalid_return_type_for_catch_error
+warning • The value of the local variable 'isPdf' isn't used • lib/screens/book_details_screen.dart:577:11 • unused_local_variable
+warning • Dead code • lib/widgets/epub/epub_settings_sheet.dart:172:42 • dead_code
+warning • The left operand can't be null, so the right operand is never executed • lib/widgets/epub/epub_settings_sheet.dart:172:45 • dead_null_aware_expression
+warning • The left operand can't be null, so the right operand is never executed • lib/widgets/epub/epub_settings_sheet.dart:184:46 • dead_null_aware_expression
+warning • The left operand can't be null, so the right operand is never executed • lib/widgets/epub/epub_settings_sheet.dart:185:48 • dead_null_aware_expression
+
+10 issues found. (ran in 4.5s)

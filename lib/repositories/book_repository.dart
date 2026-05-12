@@ -25,9 +25,10 @@ class BookRepository {
             await _dbService.saveItems(items, 'user_views');
           })
           .catchError(
-            (e) => debugPrint(
-              'Background cache refresh failed for user_views: $e',
-            ),
+            (e) {
+              debugPrint('Background cache refresh failed for user_views: $e');
+              return null;
+            },
           );
 
       return cached;
@@ -62,7 +63,10 @@ class BookRepository {
             await _dbService.saveItems(items, 'resume');
           })
           .catchError(
-            (e) => debugPrint('Background cache refresh failed for resume: $e'),
+            (e) {
+              debugPrint('Background cache refresh failed for resume: $e');
+              return null;
+            },
           );
       return cached;
     }
@@ -101,9 +105,12 @@ class BookRepository {
             await _dbService.saveItems(items, category);
           })
           .catchError(
-            (e) => debugPrint(
-              'Background cache refresh failed for $category (parentId: $parentId): $e',
-            ),
+            (e) {
+              debugPrint(
+                'Background cache refresh failed for $category (parentId: $parentId): $e',
+              );
+              return null;
+            },
           );
       return cached;
     }
@@ -168,9 +175,12 @@ class BookRepository {
               await _dbService.saveItems(items, category);
             })
             .catchError(
-              (e) => debugPrint(
-                'Background cache refresh failed for $category (parentId: $parentId, recursive: $recursive, isFavorite: $isFavorite): $e',
-              ),
+              (e) {
+                debugPrint(
+                  'Background cache refresh failed for $category (parentId: $parentId, recursive: $recursive, isFavorite: $isFavorite): $e',
+                );
+                return null;
+              },
             );
 
         return {
@@ -220,9 +230,12 @@ class BookRepository {
             await _dbService.saveItems([item], 'details');
           })
           .catchError(
-            (e) => debugPrint(
-              'Background cache refresh failed for item details (itemId: $itemId): $e',
-            ),
+            (e) {
+              debugPrint(
+                'Background cache refresh failed for item details (itemId: $itemId): $e',
+              );
+              return null;
+            },
           );
 
       return cached.toJson();

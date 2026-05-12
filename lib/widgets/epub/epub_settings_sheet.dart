@@ -169,7 +169,7 @@ class _EpubSettingsSheetState extends State<EpubSettingsSheet> {
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                   Text(
-                    '${_current.fontSize ?? 100}%',
+                    '${_current.fontSize}%',
                     style: TextStyle(
                       color: cs.primary,
                       fontWeight: FontWeight.w600,
@@ -181,8 +181,8 @@ class _EpubSettingsSheetState extends State<EpubSettingsSheet> {
                 min: 60,
                 max: 200,
                 divisions: 28,
-                value: (_current.fontSize ?? 100).toDouble(),
-                label: '${_current.fontSize ?? 100}%',
+                value: _current.fontSize.toDouble(),
+                label: '${_current.fontSize}%',
                 onChanged: (v) => _update(_withFontSize(v.round())),
               ),
               const SizedBox(height: 8),

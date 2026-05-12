@@ -7,6 +7,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../services/jellyfin_service.dart';
 
+// ---------------------------------------------------------------------------
+// Screen entry point
+// ---------------------------------------------------------------------------
+
 class ComicReaderScreen extends StatefulWidget {
   final String itemId;
   final String title;
@@ -23,89 +27,84 @@ class ComicReaderScreen extends StatefulWidget {
   State<ComicReaderScreen> createState() => _ComicReaderScreenState();
 }
 
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
 class _ComicReaderScreenState extends State<ComicReaderScreen> {
-  final Flureadium _flureadium = Flureadium();
+  final _flureadium = Flureadium();
+  final _jellyfinService = JellyfinService();
+
   Publication? _publication;
   Locator? _initialLocator;
   bool _isLoading = true;
   String? _error;
 
-  // Status bar state
+  // Overlay — appbar toggles on tap; bottom bar is always visible
+  bool _showAppBar = false;
+
+  // Progress tracking
   double _currentProgress = 0.0;
   int _currentPosition = 0;
   int _totalPages = 0;
-  String _currentTime = '';
-  Timer? _clockTimer;
 
-  // UI state
-  bool _isAppBarVisible = true;
-  final JellyfinService _jellyfinService = JellyfinService();
-  int? _totalTicks;
+  // Jellyfin state
   String? _serverUrl;
   String? _token;
   String? _userId;
+  int? _totalTicks;
 
-  // Stream subscriptions
-  StreamSubscription<Locator>? _locatorSubscription;
+  // Stream subscriptions — set up in onReady per the docs
+  StreamSubscription<Locator>? _locatorSub;
+  StreamSubscription<ReadiumError>? _errorSub;
+
+  // ---------------------------------------------------------------------------
+  // Lifecycle
+  // ---------------------------------------------------------------------------
 
   @override
   void initState() {
     super.initState();
+
     final auth = Provider.of<AuthProvider>(context, listen: false);
     _serverUrl = auth.serverUrl;
     _token = auth.token;
     _userId = auth.userId;
 
-    _updateClock();
-    _clockTimer = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) => _updateClock(),
-    );
-    _openPublication();
-    _initJellyfinProgress();
-
-    // Set immersive mode to hide status bar
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    _openPublication();
   }
 
-  Future<void> _initJellyfinProgress() async {
+  @override
+  void dispose() {
+    _locatorSub?.cancel();
+    _errorSub?.cancel();
+
+    // Report playback stopped to Jellyfin
     if (_serverUrl != null && _token != null && _userId != null) {
-      await _jellyfinService.reportPlaybackStart(
+      int ticks;
+      if (_totalTicks != null) {
+        ticks = (_currentProgress * _totalTicks!).toInt();
+      } else {
+        ticks = _currentPosition;
+      }
+      _jellyfinService.reportPlaybackStopped(
         _serverUrl!,
         _userId!,
         _token!,
         widget.itemId,
+        ticks,
       );
-
-      // Fetch item details to get RunTimeTicks for accurate progress
-      try {
-        final details = await _jellyfinService.getItemDetails(
-          _serverUrl!,
-          _userId!,
-          _token!,
-          widget.itemId,
-        );
-        if (details['RunTimeTicks'] != null) {
-          setState(() {
-            _totalTicks = details['RunTimeTicks'];
-          });
-        }
-      } catch (e) {
-        debugPrint('Failed to fetch item details for ticks: $e');
-      }
     }
+
+    _flureadium.closePublication();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    super.dispose();
   }
 
-  void _updateClock() {
-    final now = DateTime.now();
-    final timeString =
-        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    if (mounted) {
-      setState(() {
-        _currentTime = timeString;
-      });
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // Publication lifecycle
+  // ---------------------------------------------------------------------------
 
   Future<void> _openPublication() async {
     if (widget.filePath == null) {
@@ -117,18 +116,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
     }
 
     try {
-      // Convert filesystem path to file:// URI for Flureadium
-      String pubUrl = widget.filePath!;
-      if (!pubUrl.startsWith('file://')) {
-        pubUrl = 'file://$pubUrl';
-      }
-
-      final pub = await _flureadium.openPublication(pubUrl);
-
-      // Determine total pages from reading order
-      final pageCount = pub.readingOrder.length;
-
-      // Try to restore saved position
+      // Load saved locator before opening the publication
       Locator? savedLocator;
       try {
         final prefs = await SharedPreferences.getInstance();
@@ -140,15 +128,42 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
         debugPrint('Failed to load saved locator: $e');
       }
 
+      // Open the publication — pass the raw filesystem path
+      final pub = await _flureadium.openPublication(widget.filePath!);
+
+      debugPrint('Publication opened: ${pub.metadata.title}');
+      debugPrint('Reading order: ${pub.readingOrder.length} items');
+
+      // Report playback start to Jellyfin
+      if (_serverUrl != null && _token != null && _userId != null) {
+        await _jellyfinService.reportPlaybackStart(
+          _serverUrl!,
+          _userId!,
+          _token!,
+          widget.itemId,
+        );
+        try {
+          final details = await _jellyfinService.getItemDetails(
+            _serverUrl!,
+            _userId!,
+            _token!,
+            widget.itemId,
+          );
+          if (details['RunTimeTicks'] != null) {
+            _totalTicks = details['RunTimeTicks'] as int;
+          }
+        } catch (_) {}
+      }
+
       if (mounted) {
         setState(() {
           _publication = pub;
           _initialLocator = savedLocator;
-          _totalPages = pageCount;
+          _totalPages = pub.readingOrder.length;
           _isLoading = false;
-          // Restore position from saved locator
           if (savedLocator != null) {
-            _currentProgress = savedLocator.locations?.totalProgression ?? 0.0;
+            _currentProgress =
+                savedLocator.locations?.totalProgression ?? 0.0;
             _currentPosition = savedLocator.locations?.position ?? 0;
           }
         });
@@ -170,42 +185,44 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // onReady — subscribe to EventChannels here per flureadium docs
+  // ---------------------------------------------------------------------------
+
   void _onReaderReady() {
-    // Subscribe to locator changes after the reader is ready
-    _locatorSubscription?.cancel();
-    _locatorSubscription = _flureadium.onTextLocatorChanged.listen((locator) {
+    _locatorSub?.cancel();
+    _errorSub?.cancel();
+
+    _locatorSub = _flureadium.onTextLocatorChanged.listen((locator) {
       if (!mounted) return;
 
-      final progress = locator.locations?.totalProgression ?? 0.0;
-      final position = locator.locations?.position ?? 0;
-
       setState(() {
-        _currentProgress = progress;
-        _currentPosition = position;
-        if (_isAppBarVisible) {
-          _isAppBarVisible = false;
-        }
+        _currentProgress = locator.locations?.totalProgression ?? 0.0;
+        _currentPosition = locator.locations?.position ?? 0;
       });
 
       _saveProgress(locator);
     });
+
+    _errorSub = _flureadium.onErrorEvent.listen((error) {
+      debugPrint('Flureadium error: $error');
+    });
   }
+
+  // ---------------------------------------------------------------------------
+  // Progress persistence & Jellyfin reporting
+  // ---------------------------------------------------------------------------
 
   Future<void> _saveProgress(Locator locator) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('comic_locator_${widget.itemId}', locator.json);
 
-      // Report to Jellyfin
       if (_serverUrl != null && _token != null && _userId != null) {
         final progress = locator.locations?.totalProgression ?? 0.0;
-        int ticks;
-        if (_totalTicks != null) {
-          ticks = (progress * _totalTicks!).toInt();
-        } else {
-          // Fallback: use position as ticks
-          ticks = locator.locations?.position ?? 0;
-        }
+        int ticks = _totalTicks != null
+            ? (progress * _totalTicks!).toInt()
+            : (locator.locations?.position ?? 0);
 
         await _jellyfinService.reportProgress(
           _serverUrl!,
@@ -216,184 +233,242 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
           false,
         );
       }
-    } catch (e) {
-      debugPrint('Failed to save progress: $e');
-    }
+    } catch (_) {}
   }
 
-  @override
-  void dispose() {
-    _clockTimer?.cancel();
-    _locatorSubscription?.cancel();
-
-    // Report stop to Jellyfin
-    if (_serverUrl != null && _token != null && _userId != null) {
-      int ticks;
-      if (_totalTicks != null) {
-        ticks = (_currentProgress * _totalTicks!).toInt();
-      } else {
-        ticks = _currentPosition;
-      }
-      _jellyfinService.reportPlaybackStopped(
-        _serverUrl!,
-        _userId!,
-        _token!,
-        widget.itemId,
-        ticks,
-      );
-    }
-
-    // Close the publication
-    _flureadium.closePublication();
-
-    // Restore system UI mode
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    super.dispose();
-  }
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          _buildBody(),
-          if (_isAppBarVisible)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: SafeArea(
-                bottom: false,
-                child: AppBar(title: Text(widget.title)),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBody() {
     if (_isLoading) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text('Loading ${widget.title}...'),
-          ],
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                'Loading ${widget.title}...',
+                style: const TextStyle(color: Colors.white70),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error, size: 64, color: Colors.red[300]),
-            const SizedBox(height: 16),
-            Text(
-              _error!,
-              style: const TextStyle(fontSize: 16),
-              textAlign: TextAlign.center,
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.white70),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () {
+                    setState(() {
+                      _isLoading = true;
+                      _error = null;
+                    });
+                    _openPublication();
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _isLoading = true;
-                  _error = null;
-                });
-                _openPublication();
-              },
-              child: const Text('Retry'),
-            ),
-          ],
+          ),
         ),
       );
     }
 
     if (_publication == null) {
-      return const Center(child: Text('No pages to display'));
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Text(
+            'No pages to display',
+            style: TextStyle(color: Colors.white70),
+          ),
+        ),
+      );
     }
 
-    // Compute displayed page number from progress
-    final displayPage = _totalPages > 0
-        ? (_currentProgress * _totalPages).ceil().clamp(1, _totalPages)
-        : _currentPosition + 1;
-
-    return Column(
-      children: [
-        Expanded(
-          child: ReadiumReaderWidget(
+    // Main reader layout — follows the official flureadium documentation
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // Reader widget — placed directly, no wrapping GestureDetectors
+          ReadiumReaderWidget(
             publication: _publication!,
             initialLocator: _initialLocator,
-            loadingWidget: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  Text('Loading ${widget.title}...'),
-                ],
-              ),
-            ),
-            onTap: () {
-              setState(() {
-                _isAppBarVisible = !_isAppBarVisible;
-              });
-            },
+            onTap: () => setState(() => _showAppBar = !_showAppBar),
+            onReady: _onReaderReady,
             onLocatorChanged: (locator) {
-              if (!mounted) return;
-
-              final progress = locator.locations?.totalProgression ?? 0.0;
-              final position = locator.locations?.position ?? 0;
-
-              setState(() {
-                _currentProgress = progress;
-                _currentPosition = position;
-              });
-
+              if (mounted) {
+                setState(() {
+                  _currentProgress =
+                      locator.locations?.totalProgression ?? 0.0;
+                  _currentPosition = locator.locations?.position ?? 0;
+                });
+              }
               _saveProgress(locator);
             },
-            onReady: _onReaderReady,
           ),
-        ),
-        Container(
-          height: 40,
-          color: Theme.of(context).scaffoldBackgroundColor,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Clock on the left
-              Text(
-                _currentTime,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : Colors.black87,
+
+          // Top AppBar — toggled by tapping the reader
+          if (_showAppBar)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.black87, Colors.transparent],
+                  ),
+                ),
+                child: SafeArea(
+                  bottom: false,
+                  child: AppBar(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    leading: IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    title: Text(
+                      widget.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    iconTheme: const IconThemeData(color: Colors.white),
+                    actions: [
+                      IconButton(
+                        icon: const Icon(Icons.settings_outlined),
+                        tooltip: 'Settings',
+                        onPressed: () {
+                          // TODO: implement settings
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              // Page indicator on the right
-              Text(
-                _totalPages > 0
-                    ? '$displayPage / $_totalPages'
-                    : 'Page ${_currentPosition + 1}',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : Colors.black87,
+            ),
+
+          // Bottom bar — always visible, shows clock (left) and page (right)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [Colors.black54, Colors.transparent],
+                  ),
+                ),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: SafeArea(
+                  top: false,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const _ClockWidget(),
+                      Text(
+                        _totalPages > 0
+                            ? '${_currentPosition + 1} / $_totalPages'
+                            : '${_currentPosition + 1}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Clock Widget — always-visible persistent clock
+// ---------------------------------------------------------------------------
+
+class _ClockWidget extends StatefulWidget {
+  const _ClockWidget();
+
+  @override
+  State<_ClockWidget> createState() => _ClockWidgetState();
+}
+
+class _ClockWidgetState extends State<_ClockWidget> {
+  late Timer _timer;
+  String _currentTime = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _updateTime();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateTime());
+  }
+
+  void _updateTime() {
+    if (!mounted) return;
+    final now = DateTime.now();
+    final newTime =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    if (_currentTime != newTime) {
+      setState(() {
+        _currentTime = newTime;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      _currentTime,
+      style: const TextStyle(
+        color: Colors.white70,
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
     );
   }
 }
