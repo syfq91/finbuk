@@ -126,5 +126,6 @@ The codebase follows a layered architecture: **screens → repositories → serv
     - Both `ComicReaderScreen` and `EpubReaderScreen` use `ReadiumReaderWidget`.
     - `ReadiumReaderWidget` MUST NOT be wrapped in `GestureDetector` or other gesture-intercepting widgets as it interferes with Android's native platform view rendering (Hybrid Composition).
     - EventChannel subscriptions (`onTextLocatorChanged`, `onErrorEvent`, `onLocatorChanged`) MUST be performed inside the `onReady` callback of `ReadiumReaderWidget` to ensure native channels are registered before listening.
+    - EPUB preferences also must be applied after the native reader is ready; queue updates rather than calling `setEPUBPreferences` too early.
     - Android's `MainActivity` MUST extend `FlutterFragmentActivity` for the reader to function.
     - Hardware acceleration MUST be enabled in `AndroidManifest.xml`.

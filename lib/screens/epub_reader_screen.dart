@@ -47,11 +47,10 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
   String? _error;
 
   // UI overlay visibility
-  bool _showControls = true;
+  bool _showAppBar = false;
 
   // Progress tracking
   double _currentProgress = 0.0;
-  String? _currentChapter;
 
   // EPUB preferences
   EPUBPreferences _prefs = EPUBPreferences(
@@ -62,6 +61,8 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
     backgroundColor: const Color(0xFFFFFFFF),
     textColor: const Color(0xFF000000),
   );
+  bool _readerReady = false;
+  EPUBPreferences? _pendingPrefs;
 
   // Jellyfin state
   String? _serverUrl;
@@ -100,8 +101,9 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
 
     // Report playback stopped to Jellyfin
     if (_serverUrl != null && _token != null && _userId != null) {
-      final ticks =
-          _totalTicks != null ? (_currentProgress * _totalTicks!).toInt() : 0;
+      final ticks = _totalTicks != null
+          ? (_currentProgress * _totalTicks!).toInt()
+          : 0;
       _jellyfinService.reportPlaybackStopped(
         _serverUrl!,
         _userId!,
@@ -161,7 +163,11 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
 
   Future<void> _applyPrefs(EPUBPreferences p) async {
     setState(() => _prefs = p);
-    await _flureadium.setEPUBPreferences(p);
+    _pendingPrefs = p;
+    if (_readerReady) {
+      await _flureadium.setEPUBPreferences(p);
+      _pendingPrefs = null;
+    }
     await _savePrefs(p);
   }
 
@@ -219,8 +225,7 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
           _publication = pub;
           _initialLocator = savedLocator;
           if (savedLocator != null) {
-            _currentProgress =
-                savedLocator.locations?.totalProgression ?? 0.0;
+            _currentProgress = savedLocator.locations?.totalProgression ?? 0.0;
           }
           _isLoading = false;
         });
@@ -247,15 +252,20 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
   // ---------------------------------------------------------------------------
 
   void _onReaderReady() {
+    _readerReady = true;
     _locatorSub?.cancel();
     _errorSub?.cancel();
+
+    if (_pendingPrefs != null) {
+      _flureadium.setEPUBPreferences(_pendingPrefs!);
+      _pendingPrefs = null;
+    }
 
     _locatorSub = _flureadium.onTextLocatorChanged.listen((locator) {
       if (!mounted) return;
 
       setState(() {
         _currentProgress = locator.locations?.totalProgression ?? 0.0;
-        _currentChapter = locator.title;
       });
 
       _saveProgress(locator);
@@ -264,6 +274,22 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
     _errorSub = _flureadium.onErrorEvent.listen((error) {
       debugPrint('EPUB Reader Error: $error');
     });
+  }
+
+  Future<void> _goPreviousPage() async {
+    try {
+      await _flureadium.goLeft();
+    } catch (e) {
+      debugPrint('Failed to navigate to previous EPUB page: $e');
+    }
+  }
+
+  Future<void> _goNextPage() async {
+    try {
+      await _flureadium.goRight();
+    } catch (e) {
+      debugPrint('Failed to navigate to next EPUB page: $e');
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -385,7 +411,11 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.menu_book_rounded, size: 64, color: Colors.red),
+                const Icon(
+                  Icons.menu_book_rounded,
+                  size: 64,
+                  color: Colors.red,
+                ),
                 const SizedBox(height: 16),
                 Text(
                   _error!,
@@ -419,7 +449,7 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
       );
     }
 
-    // Main reader layout — follows the official flureadium documentation
+    // Main reader layout — follows the same design as ComicReaderScreen
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -428,14 +458,11 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
           ReadiumReaderWidget(
             publication: _publication!,
             initialLocator: _initialLocator,
-            onTap: () => setState(() => _showControls = !_showControls),
             onReady: _onReaderReady,
             onLocatorChanged: (locator) {
               if (mounted) {
                 setState(() {
-                  _currentProgress =
-                      locator.locations?.totalProgression ?? 0.0;
-                  _currentChapter = locator.title;
+                  _currentProgress = locator.locations?.totalProgression ?? 0.0;
                 });
               }
               _saveProgress(locator);
@@ -443,9 +470,34 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
             onExternalLinkActivated: _onExternalLink,
           ),
 
-          // Overlay controls
-          if (_showControls) ...[
-            // Top bar
+          // Tap zones for overlay toggle and page navigation
+          Positioned.fill(
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _goPreviousPage,
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () => setState(() => _showAppBar = !_showAppBar),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _goNextPage,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Top AppBar — toggled by tapping
+          if (_showAppBar)
             Positioned(
               top: 0,
               left: 0,
@@ -463,6 +515,10 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
                   child: AppBar(
                     backgroundColor: Colors.transparent,
                     elevation: 0,
+                    leading: IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
                     title: Text(
                       widget.title,
                       style: const TextStyle(
@@ -490,119 +546,41 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
               ),
             ),
 
-            // Bottom bar
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
+          // Bottom bar — always visible, minimalist design
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
               child: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    colors: [Colors.black87, Colors.transparent],
+                    colors: [Colors.black54, Colors.transparent],
                   ),
                 ),
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 child: SafeArea(
                   top: false,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Chapter title + clock
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _currentChapter ?? widget.title,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const _ClockWidget(),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-
-                      // Progress bar + percentage
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(2),
-                              child: LinearProgressIndicator(
-                                value: _currentProgress,
-                                minHeight: 3,
-                                backgroundColor: Colors.white24,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            '${(_currentProgress * 100).toStringAsFixed(0)}%',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Navigation buttons
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.skip_previous_rounded,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                            tooltip: 'Previous chapter',
-                            onPressed: () => _flureadium.skipToPrevious(),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.chevron_left_rounded,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                            tooltip: 'Previous page',
-                            onPressed: () => _flureadium.goLeft(),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.chevron_right_rounded,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                            tooltip: 'Next page',
-                            onPressed: () => _flureadium.goRight(),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.skip_next_rounded,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                            tooltip: 'Next chapter',
-                            onPressed: () => _flureadium.skipToNext(),
-                          ),
-                        ],
+                      const _ClockWidget(),
+                      Text(
+                        '${(_currentProgress * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -653,7 +631,11 @@ class _ClockWidgetState extends State<_ClockWidget> {
   Widget build(BuildContext context) {
     return Text(
       _currentTime,
-      style: const TextStyle(color: Colors.white70, fontSize: 12),
+      style: const TextStyle(
+        color: Colors.white70,
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
     );
   }
 }

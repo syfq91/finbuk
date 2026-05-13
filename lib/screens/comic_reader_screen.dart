@@ -162,8 +162,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
           _totalPages = pub.readingOrder.length;
           _isLoading = false;
           if (savedLocator != null) {
-            _currentProgress =
-                savedLocator.locations?.totalProgression ?? 0.0;
+            _currentProgress = savedLocator.locations?.totalProgression ?? 0.0;
             _currentPosition = savedLocator.locations?.position ?? 0;
           }
         });
@@ -207,6 +206,22 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
     _errorSub = _flureadium.onErrorEvent.listen((error) {
       debugPrint('Flureadium error: $error');
     });
+  }
+
+  Future<void> _goPreviousPage() async {
+    try {
+      await _flureadium.goLeft();
+    } catch (e) {
+      debugPrint('Failed to navigate to previous page: $e');
+    }
+  }
+
+  Future<void> _goNextPage() async {
+    try {
+      await _flureadium.goRight();
+    } catch (e) {
+      debugPrint('Failed to navigate to next page: $e');
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -316,18 +331,42 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
           ReadiumReaderWidget(
             publication: _publication!,
             initialLocator: _initialLocator,
-            onTap: () => setState(() => _showAppBar = !_showAppBar),
             onReady: _onReaderReady,
             onLocatorChanged: (locator) {
               if (mounted) {
                 setState(() {
-                  _currentProgress =
-                      locator.locations?.totalProgression ?? 0.0;
+                  _currentProgress = locator.locations?.totalProgression ?? 0.0;
                   _currentPosition = locator.locations?.position ?? 0;
                 });
               }
               _saveProgress(locator);
             },
+          ),
+
+          // Tap zones for page navigation and overlay toggle
+          Positioned.fill(
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _goPreviousPage,
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () => setState(() => _showAppBar = !_showAppBar),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _goNextPage,
+                  ),
+                ),
+              ],
+            ),
           ),
 
           // Top AppBar — toggled by tapping the reader

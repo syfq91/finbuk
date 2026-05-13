@@ -10,7 +10,7 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 - **Secure Authentication**: Login with username/password, credentials stored securely via `flutter_secure_storage`
 - **Library Browsing**: Browse collections, folders, and view latest additions with cover art
 - **Advanced Readers**: High-performance, Readium-based readers for both Comics (CBZ/CBR) and Books (EPUB)
-- **EPUB Customization**: Personalize your reading experience with adjustable font sizes, themes, and layouts
+- **EPUB Customization**: Personalize your reading experience with adjustable font sizes, themes, and layouts. Preference changes are applied after the native `ReadiumReaderWidget` is ready so settings are not lost during initialization.
 - **Offline Downloads**: Download content to internal app storage for offline reading with background progress tracking
 - **Favorites & Read Status**: Mark items as favorite or played/unplayed
 - **Local Database**: SQLite-based caching for faster library loading and download management
@@ -90,6 +90,11 @@ See [AGENTS.md](AGENTS.md) for detailed architecture documentation.
 - SQLite caches library items to reduce API calls
 - Download manager supports up to 3 concurrent downloads with queue management
 - Core library desugaring enabled for Java 17 compatibility
+
+## Developer Notes
+
+- EPUB reader preferences are queued in `lib/screens/epub_reader_screen.dart` and only applied once `ReadiumReaderWidget` is ready.
+- `ReadiumReaderWidget` `onReady` is the correct place to subscribe to `flureadium.onTextLocatorChanged` and `flureadium.onErrorEvent`.
 
 ## Dependencies
 
