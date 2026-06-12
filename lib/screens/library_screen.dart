@@ -11,14 +11,18 @@ class LibraryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
+    final serverUrl = auth.serverUrl;
+    final userId = auth.userId;
+    final token = auth.token;
+
+    if (serverUrl == null || userId == null || token == null) {
+      return const Center(child: Text('Not authenticated'));
+    }
+
     final repository = BookRepository();
 
     return FutureBuilder<List<Item>>(
-      future: repository.getUserViews(
-        auth.serverUrl!,
-        auth.userId!,
-        auth.token!,
-      ),
+      future: repository.getUserViews(serverUrl, userId, token),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting &&
             (!snapshot.hasData || snapshot.data!.isEmpty)) {

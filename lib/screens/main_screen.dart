@@ -28,9 +28,13 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
-    final profileImageUrl = auth.isAuthenticated
-        ? '${auth.serverUrl}/Users/${auth.userId}/Images/Primary'
-        : null;
+    final token = auth.token;
+    final serverUrl = auth.serverUrl;
+    final userId = auth.userId;
+    final profileImageUrl =
+        (serverUrl != null && userId != null && token != null)
+            ? '$serverUrl/Users/$userId/Images/Primary'
+            : null;
 
     final appBar = AppBar(
       title: Text(_titles[_selectedIndex]),
@@ -53,10 +57,10 @@ class _MainScreenState extends State<MainScreen> {
             child: CircleAvatar(
               radius: 16,
               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              backgroundImage: profileImageUrl != null
+              backgroundImage: profileImageUrl != null && token != null
                   ? NetworkImage(
                       profileImageUrl,
-                      headers: {'X-Emby-Token': auth.token!},
+                      headers: {'X-Emby-Token': token},
                     )
                   : null,
               child: profileImageUrl == null
@@ -143,29 +147,30 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               ],
             ),
-            bottomSheet: FutureBuilder<bool>(
-              future: _checkConnection(auth.serverUrl!),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data == false) {
-                  return Container(
-                    color: Colors.orange,
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: const Text(
-                      'Offline Mode - Using Cached Data',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-          );
+            bottomSheet: serverUrl != null
+                ? FutureBuilder<bool>(
+                    future: _checkConnection(serverUrl),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData && snapshot.data == false) {
+                        return Container(
+                          color: Colors.orange,
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: const Text(
+                            'Offline Mode - Using Cached Data',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  )
+                : null,
         }
       },
     );

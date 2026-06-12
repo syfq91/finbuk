@@ -14,14 +14,18 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
+    final serverUrl = auth.serverUrl;
+    final userId = auth.userId;
+    final token = auth.token;
+
+    if (serverUrl == null || userId == null || token == null) {
+      return const Center(child: Text('Not authenticated'));
+    }
+
     final repository = BookRepository();
 
     return FutureBuilder<List<Item>>(
-      future: repository.getUserViews(
-        auth.serverUrl!,
-        auth.userId!,
-        auth.token!,
-      ),
+      future: repository.getUserViews(serverUrl, userId, token),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting &&
             (!snapshot.hasData || snapshot.data!.isEmpty)) {
@@ -61,15 +65,10 @@ class HomeScreen extends StatelessWidget {
           const Icon(Icons.library_books, size: 64, color: Colors.grey),
           const SizedBox(height: 16),
           Text(
-            'Welcome, ${auth.username}!',
+            'Welcome, ${auth.username ?? 'User'}!',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const Text('No book libraries found on this server.'),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: () => (context as Element).markNeedsBuild(),
-            child: const Text('Retry'),
-          ),
         ],
       ),
     );
@@ -84,12 +83,16 @@ class _ResumeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final serverUrl = auth.serverUrl;
+    final userId = auth.userId;
+    final token = auth.token;
+
+    if (serverUrl == null || userId == null || token == null) {
+      return const SizedBox.shrink();
+    }
+
     return FutureBuilder<List<Item>>(
-      future: repository.getResumeItems(
-        auth.serverUrl!,
-        auth.userId!,
-        auth.token!,
-      ),
+      future: repository.getResumeItems(serverUrl, userId, token),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting &&
             (!snapshot.hasData || snapshot.data!.isEmpty)) {
@@ -125,7 +128,7 @@ class _ResumeSection extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final item = items[index];
                   final imageUrl =
-                      '${auth.serverUrl}/Items/${item.id}/Images/Primary';
+                      '$serverUrl/Items/${item.id}/Images/Primary';
 
                   return Container(
                     width: 140,
@@ -154,7 +157,7 @@ class _ResumeSection extends StatelessWidget {
                                     const Center(
                                       child: Icon(Icons.broken_image),
                                     ),
-                                httpHeaders: {'X-Emby-Token': auth.token!},
+                                httpHeaders: {'X-Emby-Token': token},
                               ),
                             ),
                             Padding(
@@ -217,6 +220,14 @@ class _LibrarySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final serverUrl = auth.serverUrl;
+    final userId = auth.userId;
+    final token = auth.token;
+
+    if (serverUrl == null || userId == null || token == null) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -252,9 +263,9 @@ class _LibrarySection extends StatelessWidget {
           height: 280,
           child: FutureBuilder<List<Item>>(
             future: repository.getLatestMedia(
-              auth.serverUrl!,
-              auth.userId!,
-              auth.token!,
+              serverUrl,
+              userId,
+              token,
               parentId: library.id,
             ),
             builder: (context, snapshot) {
@@ -280,7 +291,7 @@ class _LibrarySection extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final item = items[index];
                   final imageUrl =
-                      '${auth.serverUrl}/Items/${item.id}/Images/Primary';
+                      '$serverUrl/Items/${item.id}/Images/Primary';
 
                   return Container(
                     width: 160,
@@ -309,7 +320,7 @@ class _LibrarySection extends StatelessWidget {
                                     const Center(
                                       child: Icon(Icons.broken_image),
                                     ),
-                                httpHeaders: {'X-Emby-Token': auth.token!},
+                                httpHeaders: {'X-Emby-Token': token},
                               ),
                             ),
                             Padding(

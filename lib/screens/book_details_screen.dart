@@ -306,11 +306,15 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
       return;
     }
 
+    final serverUrl = auth.serverUrl;
+    final token = auth.token;
+    if (serverUrl == null || token == null) return;
+
     await _downloadManager.startDownload(
       itemId: widget.itemId,
       itemName: item['Name'] ?? 'Unknown',
-      url: auth.serverUrl!,
-      token: auth.token!,
+      url: serverUrl,
+      token: token,
       extension: ext,
     );
     // UI updates handled by listener
@@ -322,14 +326,19 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     JellyfinService service,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    final serverUrl = auth.serverUrl;
+    final userId = auth.userId;
+    final token = auth.token;
+    if (serverUrl == null || userId == null || token == null) return;
+
     final newState = !(_isFavorite ?? false);
     setState(() => _isFavorite = newState);
     try {
       await service.toggleFavorite(
-        auth.serverUrl!,
-        auth.userId!,
+        serverUrl,
+        userId,
         widget.itemId,
-        auth.token!,
+        token,
         newState,
       );
     } catch (e) {
@@ -348,14 +357,19 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     JellyfinService service,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    final serverUrl = auth.serverUrl;
+    final userId = auth.userId;
+    final token = auth.token;
+    if (serverUrl == null || userId == null || token == null) return;
+
     final newState = !(_isPlayed ?? false);
     setState(() => _isPlayed = newState);
     try {
       await service.togglePlayed(
-        auth.serverUrl!,
-        auth.userId!,
+        serverUrl,
+        userId,
         widget.itemId,
-        auth.token!,
+        token,
         newState,
       );
     } catch (e) {
@@ -430,8 +444,8 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     await _downloadManager.startDownload(
       itemId: widget.itemId,
       itemName: item['Name'] ?? 'Unknown',
-      url: auth.serverUrl!,
-      token: auth.token!,
+      url: auth.serverUrl ?? '',
+      token: auth.token ?? '',
       extension: ext,
     );
 
@@ -548,7 +562,9 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
-    final service = JellyfinService();
+    final serverUrl = auth.serverUrl;
+    final userId = auth.userId;
+    final token = auth.token;
 
     if (_isLoading && _displayItem == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -574,11 +590,13 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
         container == 'epub' ||
         path.endsWith('.epub');
 
-    final imageUrl = '${auth.serverUrl}/Items/${item['Id']}/Images/Primary';
+    final imageUrl =
+        serverUrl != null ? '$serverUrl/Items/${item['Id']}/Images/Primary' : '';
     final backdropUrl =
         item['BackdropImageTags'] != null &&
-            (item['BackdropImageTags'] as List).isNotEmpty
-        ? '${auth.serverUrl}/Items/${item['Id']}/Images/Backdrop'
+            (item['BackdropImageTags'] as List).isNotEmpty &&
+            serverUrl != null
+        ? '$serverUrl/Items/${item['Id']}/Images/Backdrop'
         : null;
 
     return Scaffold(
@@ -598,7 +616,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
               background: _buildBetterHeader(
                 backdropUrl ?? imageUrl,
                 imageUrl,
-                auth.token!,
+                token ?? '',
               ),
             ),
           ),

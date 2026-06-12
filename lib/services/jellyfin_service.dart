@@ -3,12 +3,26 @@ import 'package:dio/dio.dart';
 class JellyfinService {
   final Dio _dio = Dio();
 
+  static String _normalizeUrl(String url) {
+    return url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+  }
+
+  static Map<String, String> _authHeaders(String token, {bool json = false}) {
+    final headers = <String, String>{
+      'X-Emby-Token': token,
+      'X-Emby-Authorization':
+          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
+    };
+    if (json) headers['Content-Type'] = 'application/json';
+    return headers;
+  }
+
   Future<Map<String, dynamic>> authenticate(
     String url,
     String username,
     String password,
   ) async {
-    final baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+    final baseUrl = _normalizeUrl(url);
 
     final headers = {
       'X-Emby-Authorization':
@@ -44,17 +58,12 @@ class JellyfinService {
     String userId,
     String token,
   ) async {
-    final baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
-    final headers = {
-      'X-Emby-Token': token,
-      'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
-    };
+    final baseUrl = _normalizeUrl(url);
 
     try {
       final response = await _dio.get(
         '$baseUrl/Users/$userId/Views',
-        options: Options(headers: headers),
+        options: Options(headers: _authHeaders(token)),
       );
       // Filter for libraries that are specifically for books
       final items = response.data['Items'] as List<dynamic>? ?? [];
@@ -69,18 +78,13 @@ class JellyfinService {
     String userId,
     String token,
   ) async {
-    final baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
-    final headers = {
-      'X-Emby-Token': token,
-      'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
-    };
+    final baseUrl = _normalizeUrl(url);
 
     try {
       final response = await _dio.get(
         '$baseUrl/Users/$userId/Items/Resume',
         queryParameters: {'IncludeItemTypes': 'Book', 'Recursive': true},
-        options: Options(headers: headers),
+        options: Options(headers: _authHeaders(token)),
       );
       return response.data['Items'] ?? [];
     } catch (e) {
@@ -94,12 +98,7 @@ class JellyfinService {
     String token, {
     String? parentId,
   }) async {
-    final baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
-    final headers = {
-      'X-Emby-Token': token,
-      'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
-    };
+    final baseUrl = _normalizeUrl(url);
 
     final Map<String, dynamic> queryParameters = {'IncludeItemTypes': 'Book'};
     if (parentId != null) {
@@ -110,7 +109,7 @@ class JellyfinService {
       final response = await _dio.get(
         '$baseUrl/Users/$userId/Items/Latest',
         queryParameters: queryParameters,
-        options: Options(headers: headers),
+        options: Options(headers: _authHeaders(token)),
       );
       return response.data;
     } catch (e) {
@@ -128,12 +127,7 @@ class JellyfinService {
     int? startIndex,
     bool isFavorite = false,
   }) async {
-    final baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
-    final headers = {
-      'X-Emby-Token': token,
-      'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
-    };
+    final baseUrl = _normalizeUrl(url);
 
     final Map<String, dynamic> queryParameters = {
       'IncludeItemTypes': 'Book,Folder,CollectionFolder',
@@ -155,7 +149,7 @@ class JellyfinService {
       final response = await _dio.get(
         '$baseUrl/Users/$userId/Items',
         queryParameters: queryParameters,
-        options: Options(headers: headers),
+        options: Options(headers: _authHeaders(token)),
       );
       return {
         'Items': response.data['Items'] ?? [],
@@ -172,17 +166,12 @@ class JellyfinService {
     String token,
     String itemId,
   ) async {
-    final baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
-    final headers = {
-      'X-Emby-Token': token,
-      'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
-    };
+    final baseUrl = _normalizeUrl(url);
 
     try {
       final response = await _dio.get(
         '$baseUrl/Users/$userId/Items/$itemId',
-        options: Options(headers: headers),
+        options: Options(headers: _authHeaders(token)),
       );
       return response.data;
     } catch (e) {
@@ -196,15 +185,13 @@ class JellyfinService {
     String token,
     int index,
   ) {
-    final cleanBaseUrl = baseUrl.endsWith('/')
-        ? baseUrl.substring(0, baseUrl.length - 1)
-        : baseUrl;
+    final cleanBaseUrl = _normalizeUrl(baseUrl);
     return '$cleanBaseUrl/Items/$itemId/Images/Primary?index=$index&maxWidth=1920';
   }
 
   String getDownloadUrl(String url, String itemId, String token) {
-    final baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
-    return '$baseUrl/Items/$itemId/Download?api_key=$token';
+    final baseUrl = _normalizeUrl(url);
+    return '$baseUrl/Items/$itemId/Download';
   }
 
   Future<List<int>> downloadItem(
@@ -215,7 +202,10 @@ class JellyfinService {
     final downloadUrl = getDownloadUrl(url, itemId, token);
     final response = await _dio.get<List<int>>(
       downloadUrl,
-      options: Options(responseType: ResponseType.bytes),
+      options: Options(
+        headers: _authHeaders(token),
+        responseType: ResponseType.bytes,
+      ),
     );
     return response.data ?? [];
   }
@@ -229,16 +219,14 @@ class JellyfinService {
     CancelToken? cancelToken,
   ) async {
     final downloadUrl = getDownloadUrl(url, itemId, token);
-    final headers = {
-      'X-Emby-Token': token,
-      'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
-    };
 
     await _dio.download(
       downloadUrl,
       savePath,
-      options: Options(headers: headers, responseType: ResponseType.stream),
+      options: Options(
+        headers: _authHeaders(token),
+        responseType: ResponseType.stream,
+      ),
       onReceiveProgress: onProgress,
       cancelToken: cancelToken,
     );
@@ -251,19 +239,13 @@ class JellyfinService {
     String token,
     bool isFavorite,
   ) async {
-    final baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
-    final headers = {
-      'X-Emby-Token': token,
-      'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
-    };
-
+    final baseUrl = _normalizeUrl(url);
     final endpoint = '$baseUrl/Users/$userId/FavoriteItems/$itemId';
 
     if (isFavorite) {
-      await _dio.post(endpoint, options: Options(headers: headers));
+      await _dio.post(endpoint, options: Options(headers: _authHeaders(token)));
     } else {
-      await _dio.delete(endpoint, options: Options(headers: headers));
+      await _dio.delete(endpoint, options: Options(headers: _authHeaders(token)));
     }
   }
 
@@ -274,19 +256,13 @@ class JellyfinService {
     String token,
     bool isPlayed,
   ) async {
-    final baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
-    final headers = {
-      'X-Emby-Token': token,
-      'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
-    };
-
+    final baseUrl = _normalizeUrl(url);
     final endpoint = '$baseUrl/Users/$userId/PlayedItems/$itemId';
 
     if (isPlayed) {
-      await _dio.post(endpoint, options: Options(headers: headers));
+      await _dio.post(endpoint, options: Options(headers: _authHeaders(token)));
     } else {
-      await _dio.delete(endpoint, options: Options(headers: headers));
+      await _dio.delete(endpoint, options: Options(headers: _authHeaders(token)));
     }
   }
 
@@ -296,15 +272,10 @@ class JellyfinService {
     String itemId,
   ) async {
     final downloadUrl = getDownloadUrl(url, itemId, token);
-    final headers = {
-      'X-Emby-Token': token,
-      'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
-    };
     try {
       final response = await _dio.head(
         downloadUrl,
-        options: Options(headers: headers),
+        options: Options(headers: _authHeaders(token)),
       );
       final contentDisposition = response.headers.value('content-disposition');
       if (contentDisposition != null) {
@@ -327,19 +298,13 @@ class JellyfinService {
     String token,
     String itemId,
   ) async {
-    final baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
-    final headers = {
-      'X-Emby-Token': token,
-      'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
-      'Content-Type': 'application/json',
-    };
+    final baseUrl = _normalizeUrl(url);
 
     try {
       await _dio.post(
         '$baseUrl/Sessions/Playing',
         data: {'ItemId': itemId},
-        options: Options(headers: headers),
+        options: Options(headers: _authHeaders(token, json: true)),
       );
     } catch (e) {
       // Silently fail for progress reporting
@@ -353,19 +318,13 @@ class JellyfinService {
     String itemId,
     int positionTicks,
   ) async {
-    final baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
-    final headers = {
-      'X-Emby-Token': token,
-      'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
-      'Content-Type': 'application/json',
-    };
+    final baseUrl = _normalizeUrl(url);
 
     try {
       await _dio.post(
         '$baseUrl/Sessions/Playing/Stopped',
         data: {'ItemId': itemId, 'PositionTicks': positionTicks},
-        options: Options(headers: headers),
+        options: Options(headers: _authHeaders(token, json: true)),
       );
     } catch (e) {
       // Silently fail
@@ -380,13 +339,7 @@ class JellyfinService {
     int positionTicks,
     bool isPaused,
   ) async {
-    final baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
-    final headers = {
-      'X-Emby-Token': token,
-      'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
-      'Content-Type': 'application/json',
-    };
+    final baseUrl = _normalizeUrl(url);
 
     try {
       await _dio.post(
@@ -396,7 +349,7 @@ class JellyfinService {
           'PositionTicks': positionTicks,
           'IsPaused': isPaused,
         },
-        options: Options(headers: headers),
+        options: Options(headers: _authHeaders(token, json: true)),
       );
     } catch (e) {
       // Silently fail

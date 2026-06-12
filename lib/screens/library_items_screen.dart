@@ -59,13 +59,26 @@ class _LibraryItemsScreenState extends State<LibraryItemsScreen> {
       _isLoading = true;
     });
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    final serverUrl = auth.serverUrl;
+    final userId = auth.userId;
+    final token = auth.token;
+
+    if (serverUrl == null || userId == null || token == null) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
     final repository = BookRepository();
     int startIndex = reset ? 0 : _items.length;
     try {
       final result = await repository.getItems(
-        auth.serverUrl!,
-        auth.userId!,
-        auth.token!,
+        serverUrl,
+        userId,
+        token,
         parentId: widget.isFavoriteOnly ? null : widget.libraryId,
         recursive: widget.isFavoriteOnly ? true : false,
         limit: _pageSize,
@@ -84,15 +97,19 @@ class _LibraryItemsScreenState extends State<LibraryItemsScreen> {
     } catch (e) {
       debugPrint('Error loading items: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
+    final serverUrl = auth.serverUrl;
+    final token = auth.token;
     Widget bodyContent;
 
     if (_items.isEmpty) {
@@ -123,7 +140,9 @@ class _LibraryItemsScreenState extends State<LibraryItemsScreen> {
                     item['Type'] == 'Folder' ||
                     item['Type'] == 'CollectionFolder';
                 final imageUrl =
-                    '${auth.serverUrl}/Items/${item['Id']}/Images/Primary';
+                    serverUrl != null
+                        ? '$serverUrl/Items/${item['Id']}/Images/Primary'
+                        : '';
                 return InkWell(
                   onTap: () {
                     if (isFolder) {
@@ -169,7 +188,9 @@ class _LibraryItemsScreenState extends State<LibraryItemsScreen> {
                                     color: Colors.grey,
                                   ),
                                 ),
-                                httpHeaders: {'X-Emby-Token': auth.token!},
+                                httpHeaders: token != null
+                                    ? {'X-Emby-Token': token}
+                                    : const {},
                               ),
                               if (isFolder)
                                 Container(

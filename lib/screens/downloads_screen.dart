@@ -6,7 +6,7 @@ import '../services/file_service.dart';
 import '../models/item.dart';
 import 'book_details_screen.dart';
 import 'comic_reader_screen.dart';
-// removed
+import 'epub_reader_screen.dart';
 
 class DownloadsScreen extends StatefulWidget {
   const DownloadsScreen({super.key});
@@ -27,12 +27,14 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   }
 
   Future<void> _loadDownloads() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     final items = await _fileService.getDownloadedItems();
-    setState(() {
-      _downloadedItems = items;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _downloadedItems = items;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _deleteItem(Item item) async {
@@ -69,6 +71,18 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             builder: (context) => ComicReaderScreen(
               itemId: item.id,
               title: item.name ?? 'Comic Reader',
+              filePath: filePath,
+            ),
+          ),
+        );
+      }
+    } else if (ext == '.epub') {
+      if (mounted) {
+        navigator.push(
+          MaterialPageRoute(
+            builder: (context) => EpubReaderScreen(
+              itemId: item.id,
+              title: item.name ?? 'EPUB Reader',
               filePath: filePath,
             ),
           ),
@@ -139,7 +153,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                       child: CachedNetworkImage(
                         imageUrl: imageUrl,
                         fit: BoxFit.cover,
-                        httpHeaders: {'X-Emby-Token': auth.token!},
+                        httpHeaders: token != null
+                            ? {'X-Emby-Token': token}
+                            : const {},
                         placeholder: (context, url) => Container(
                           color: Theme.of(
                             context,

@@ -43,7 +43,7 @@ class SettingsScreen extends StatelessWidget {
                         backgroundColor: Theme.of(
                           context,
                         ).colorScheme.primaryContainer,
-                        backgroundImage: profileImageUrl != null
+                        backgroundImage: profileImageUrl != null && auth.token != null
                             ? CachedNetworkImageProvider(
                                 profileImageUrl,
                                 headers: {'X-Emby-Token': auth.token!},

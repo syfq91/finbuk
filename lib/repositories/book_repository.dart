@@ -17,19 +17,12 @@ class BookRepository {
 
     if (cached.isNotEmpty && !forceRefresh) {
       // Return cached but update in background
-      _apiService
-          .getUserViews(url, userId, token)
-          .then((rawItems) async {
-            final items = rawItems.map((j) => Item.fromJson(j)).toList();
-            await _dbService.clearCategory('user_views');
-            await _dbService.saveItems(items, 'user_views');
-          })
-          .catchError(
-            (e) {
-              debugPrint('Background cache refresh failed for user_views: $e');
-              return null;
-            },
-          );
+      _refreshInBackground(() async {
+        final rawItems = await _apiService.getUserViews(url, userId, token);
+        final items = rawItems.map((j) => Item.fromJson(j)).toList();
+        await _dbService.clearCategory('user_views');
+        await _dbService.saveItems(items, 'user_views');
+      }, 'user_views');
 
       return cached;
     }
@@ -55,19 +48,13 @@ class BookRepository {
     final cached = await _dbService.getItemsByCategory('resume');
 
     if (cached.isNotEmpty && !forceRefresh) {
-      _apiService
-          .getResumeItems(url, userId, token)
-          .then((rawItems) async {
-            final items = rawItems.map((j) => Item.fromJson(j)).toList();
-            await _dbService.clearCategory('resume');
-            await _dbService.saveItems(items, 'resume');
-          })
-          .catchError(
-            (e) {
-              debugPrint('Background cache refresh failed for resume: $e');
-              return null;
-            },
-          );
+      _refreshInBackground(() async {
+        final rawItems = await _apiService.getResumeItems(url, userId, token);
+        final items = rawItems.map((j) => Item.fromJson(j)).toList();
+        await _dbService.clearCategory('resume');
+        await _dbService.saveItems(items, 'resume');
+      }, 'resume');
+
       return cached;
     }
 
@@ -97,21 +84,18 @@ class BookRepository {
     );
 
     if (cached.isNotEmpty && !forceRefresh) {
-      _apiService
-          .getLatestMedia(url, userId, token, parentId: parentId)
-          .then((rawItems) async {
-            final items = rawItems.map((j) => Item.fromJson(j)).toList();
-            await _dbService.clearCategory(category, parentId: parentId);
-            await _dbService.saveItems(items, category);
-          })
-          .catchError(
-            (e) {
-              debugPrint(
-                'Background cache refresh failed for $category (parentId: $parentId): $e',
-              );
-              return null;
-            },
-          );
+      _refreshInBackground(() async {
+        final rawItems = await _apiService.getLatestMedia(
+          url,
+          userId,
+          token,
+          parentId: parentId,
+        );
+        final items = rawItems.map((j) => Item.fromJson(j)).toList();
+        await _dbService.clearCategory(category, parentId: parentId);
+        await _dbService.saveItems(items, category);
+      }, '$category (parentId: $parentId)');
+
       return cached;
     }
 
@@ -156,32 +140,23 @@ class BookRepository {
         parentId: parentId,
       );
       if (cached.isNotEmpty && !forceRefresh) {
-        _apiService
-            .getItems(
-              url,
-              userId,
-              token,
-              parentId: parentId,
-              recursive: recursive,
-              limit: limit,
-              startIndex: startIndex,
-              isFavorite: isFavorite,
-            )
-            .then((response) async {
-              final items = (response['Items'] as List)
-                  .map((j) => Item.fromJson(j))
-                  .toList();
-              await _dbService.clearCategory(category, parentId: parentId);
-              await _dbService.saveItems(items, category);
-            })
-            .catchError(
-              (e) {
-                debugPrint(
-                  'Background cache refresh failed for $category (parentId: $parentId, recursive: $recursive, isFavorite: $isFavorite): $e',
-                );
-                return null;
-              },
-            );
+        _refreshInBackground(() async {
+          final response = await _apiService.getItems(
+            url,
+            userId,
+            token,
+            parentId: parentId,
+            recursive: recursive,
+            limit: limit,
+            startIndex: startIndex,
+            isFavorite: isFavorite,
+          );
+          final items = (response['Items'] as List)
+              .map((j) => Item.fromJson(j))
+              .toList();
+          await _dbService.clearCategory(category, parentId: parentId);
+          await _dbService.saveItems(items, category);
+        }, '$category (parentId: $parentId, recursive: $recursive, isFavorite: $isFavorite)');
 
         return {
           'Items': cached.map((item) => item.toJson()).toList(),
@@ -223,20 +198,16 @@ class BookRepository {
 
     if (cached != null && !forceRefresh) {
       // Return cached but update in background
-      _apiService
-          .getItemDetails(url, userId, token, itemId)
-          .then((rawItem) async {
-            final item = Item.fromJson(rawItem);
-            await _dbService.saveItems([item], 'details');
-          })
-          .catchError(
-            (e) {
-              debugPrint(
-                'Background cache refresh failed for item details (itemId: $itemId): $e',
-              );
-              return null;
-            },
-          );
+      _refreshInBackground(() async {
+        final rawItem = await _apiService.getItemDetails(
+          url,
+          userId,
+          token,
+          itemId,
+        );
+        final item = Item.fromJson(rawItem);
+        await _dbService.saveItems([item], 'details');
+      }, 'item details (itemId: $itemId)');
 
       return cached.toJson();
     }
@@ -254,6 +225,18 @@ class BookRepository {
     } catch (e) {
       if (cached != null) return cached.toJson();
       rethrow;
+    }
+  }
+
+  /// Fire-and-forget background cache refresh. Catches errors silently.
+  Future<void> _refreshInBackground(
+    Future<void> Function() refresh,
+    String label,
+  ) async {
+    try {
+      await refresh();
+    } catch (e) {
+      debugPrint('Background cache refresh failed for $label: $e');
     }
   }
 }
