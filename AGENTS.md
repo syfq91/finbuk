@@ -7,7 +7,7 @@ Guidance for AI coding assistants working in this repository.
 Finbuk is a Flutter **Android-only** Jellyfin client for reading comics (CBZ) and EPUBs, and playing video and audio (Music/Audiobooks), with offline support. It connects to a Jellyfin server, authenticates users, and provides a premium experience with local caching and download capabilities.
 
 - **Tech Stack**: Flutter 3.10+, Dart, Provider (state management), Dio (HTTP), SQLite (sqflite), flutter_secure_storage
-- **Build**: Java 17 with core library desugaring enabled
+- **Build**: Java 21 with core library desugaring enabled
 - **Target OS**: Android only (iOS is NOT supported)
 - **Reading Engine**: flureadium (Readium toolkit) for both comics and EPUBs
 - **Media Engine**: media_kit for Video, Music, and Audiobook playback
