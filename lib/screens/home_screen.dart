@@ -68,7 +68,7 @@ class HomeScreen extends StatelessWidget {
             'Welcome, ${auth.username ?? 'User'}!',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
-          const Text('No book libraries found on this server.'),
+          const Text('No libraries found on this server.'),
         ],
       ),
     );
@@ -110,7 +110,7 @@ class _ResumeSection extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
-                'Continue Reading',
+                'Continue',
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),

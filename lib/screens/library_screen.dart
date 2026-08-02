@@ -76,10 +76,33 @@ class LibraryScreen extends StatelessWidget {
             }
 
             final library = libraries[index - 1];
+            final collectionType = library.collectionType ?? '';
+            IconData libraryIcon;
+            Color iconColor;
+            switch (collectionType) {
+              case 'books':
+                libraryIcon = Icons.library_books;
+                iconColor = Colors.deepPurple;
+              case 'movies':
+                libraryIcon = Icons.movie;
+                iconColor = Colors.blue;
+              case 'tvshows':
+                libraryIcon = Icons.tv;
+                iconColor = Colors.teal;
+              case 'music':
+                libraryIcon = Icons.library_music;
+                iconColor = Colors.pink;
+              case 'homevideos':
+                libraryIcon = Icons.video_library;
+                iconColor = Colors.orange;
+              default:
+                libraryIcon = Icons.folder;
+                iconColor = Colors.grey;
+            }
             return ListTile(
-              leading: const CircleAvatar(
+              leading: CircleAvatar(
                 backgroundColor: Colors.transparent,
-                child: Icon(Icons.library_books, color: Colors.deepPurple),
+                child: Icon(libraryIcon, color: iconColor),
               ),
               title: Text(
                 library.name ?? 'Unknown Library',

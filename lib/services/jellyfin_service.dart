@@ -65,9 +65,8 @@ class JellyfinService {
         '$baseUrl/Users/$userId/Views',
         options: Options(headers: _authHeaders(token)),
       );
-      // Filter for libraries that are specifically for books
-      final items = response.data['Items'] as List<dynamic>? ?? [];
-      return items.where((item) => item['CollectionType'] == 'books').toList();
+      // Return all library views (books, movies, tvshows, music, etc.)
+      return response.data['Items'] as List<dynamic>? ?? [];
     } catch (e) {
       return [];
     }
@@ -83,7 +82,10 @@ class JellyfinService {
     try {
       final response = await _dio.get(
         '$baseUrl/Users/$userId/Items/Resume',
-        queryParameters: {'IncludeItemTypes': 'Book', 'Recursive': true},
+        queryParameters: {
+          'IncludeItemTypes': 'Book,Movie,Episode,Audio,AudioBook',
+          'Recursive': true,
+        },
         options: Options(headers: _authHeaders(token)),
       );
       return response.data['Items'] ?? [];
@@ -100,7 +102,7 @@ class JellyfinService {
   }) async {
     final baseUrl = _normalizeUrl(url);
 
-    final Map<String, dynamic> queryParameters = {'IncludeItemTypes': 'Book'};
+    final Map<String, dynamic> queryParameters = {};
     if (parentId != null) {
       queryParameters['ParentId'] = parentId;
     }
@@ -130,7 +132,8 @@ class JellyfinService {
     final baseUrl = _normalizeUrl(url);
 
     final Map<String, dynamic> queryParameters = {
-      'IncludeItemTypes': 'Book,Folder,CollectionFolder',
+      'IncludeItemTypes':
+          'Book,Folder,CollectionFolder,Movie,Episode,Series,Season,Audio,MusicAlbum,MusicArtist,AudioBook',
       'Recursive': recursive,
       'Fields': 'PrimaryImageAspectRatio,SortName,Type,UserData',
       'SortBy': 'SortName',

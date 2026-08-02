@@ -13,6 +13,9 @@ import '../services/file_service.dart';
 import '../services/jellyfin_service.dart';
 import 'comic_reader_screen.dart';
 import 'epub_reader_screen.dart';
+import 'video_player_screen.dart';
+import 'music_player_screen.dart';
+import 'audiobook_player_screen.dart';
 
 class BookDetailsScreen extends StatefulWidget {
   final String itemId;
@@ -573,7 +576,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     if (_displayItem == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: const Center(child: Text('Failed to load book details')),
+        body: const Center(child: Text('Failed to load item details')),
       );
     }
 
@@ -589,6 +592,17 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     final isEpub =
         container == 'epub' ||
         path.endsWith('.epub');
+    final itemType = (item['Type'] ?? '').toString();
+    final mediaType = (item['MediaType'] ?? '').toString();
+    final isVideo = itemType == 'Movie' || itemType == 'Episode';
+    final isAudio = mediaType == 'Audio';
+    final isAudiobook = itemType == 'AudioBook';
+    final isMusic = isAudio && !isAudiobook;
+    final playbackPositionTicks =
+        (item['UserData'] as Map<String, dynamic>?)?['PlaybackPositionTicks']
+                as num? ??
+            0;
+    final hasPlaybackPosition = playbackPositionTicks > 0;
 
     final imageUrl =
         serverUrl != null ? '$serverUrl/Items/${item['Id']}/Images/Primary' : '';
@@ -642,7 +656,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                     ),
                   const SizedBox(height: 24),
 
-                  if (isComic || isEpub)
+                  if (isComic || isEpub || isVideo || isMusic || isAudiobook)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 24.0),
                       child: Row(
@@ -650,19 +664,43 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                           Expanded(
                             flex: 3,
                             child: ElevatedButton.icon(
-                              onPressed: () => _navigateToReader(
-                                context,
-                                auth,
-                                item,
-                                pageCount,
+                              onPressed: () {
+                                if (isVideo) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (context) => VideoPlayerScreen(item: item),
+                                    ),
+                                  );
+                                } else if (isMusic) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (context) => MusicPlayerScreen(item: item),
+                                    ),
+                                  );
+                                } else if (isAudiobook) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (context) => AudiobookPlayerScreen(item: item),
+                                    ),
+                                  );
+                                } else {
+                                  _navigateToReader(context, auth, item, pageCount);
+                                }
+                              },
+                              icon: Icon(
+                                isVideo ? Icons.play_arrow
+                                    : isMusic ? Icons.play_arrow
+                                    : isAudiobook ? Icons.headphones
+                                    : Icons.menu_book,
                               ),
-                              icon: const Icon(Icons.menu_book),
                               label: Text(
-                                (item['UserData']?['PlaybackPositionTicks'] ??
-                                            0) >
-                                        0
-                                    ? 'Continue Reading'
-                                    : 'Read Now',
+                                isVideo
+                                    ? hasPlaybackPosition ? 'Continue Watching' : 'Watch Now'
+                                    : isMusic
+                                        ? 'Play Now'
+                                        : isAudiobook
+                                            ? hasPlaybackPosition ? 'Continue Listening' : 'Listen Now'
+                                            : hasPlaybackPosition ? 'Continue Reading' : 'Read Now',
                               ),
                               style: ElevatedButton.styleFrom(
                                 minimumSize: const Size(0, 48),
@@ -678,7 +716,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                                 ? Icons.check_circle
                                 : Icons.check_circle_outline,
                             color: _isPlayed == true ? Colors.green : null,
-                            tooltip: 'Mark as Read',
+                            tooltip: isVideo ? 'Mark as Watched' : isComic || isEpub ? 'Mark as Read' : 'Mark as Played',
                             onPressed: () =>
                                 _togglePlayed(context, auth, service),
                           ),

@@ -115,7 +115,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'No downloaded books yet',
+              'No downloads yet',
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(color: Colors.grey),

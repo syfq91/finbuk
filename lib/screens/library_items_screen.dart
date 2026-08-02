@@ -122,7 +122,7 @@ class _LibraryItemsScreenState extends State<LibraryItemsScreen> {
             children: const [
               Icon(Icons.library_books, size: 64, color: Colors.grey),
               SizedBox(height: 16),
-              Text('No books found in this library.'),
+              Text('No items found in this library.'),
             ],
           ),
         );
@@ -138,7 +138,11 @@ class _LibraryItemsScreenState extends State<LibraryItemsScreen> {
                 final item = _items[index];
                 final isFolder =
                     item['Type'] == 'Folder' ||
-                    item['Type'] == 'CollectionFolder';
+                    item['Type'] == 'CollectionFolder' ||
+                    item['Type'] == 'Series' ||
+                    item['Type'] == 'Season' ||
+                    item['Type'] == 'MusicAlbum' ||
+                    item['Type'] == 'MusicArtist';
                 final imageUrl =
                     serverUrl != null
                         ? '$serverUrl/Items/${item['Id']}/Images/Primary'
