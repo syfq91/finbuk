@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
 import '../repositories/book_repository.dart';
-import 'book_details_screen.dart';
+import 'item_details_screen.dart';
 
 class LibraryItemsScreen extends StatefulWidget {
   final String? libraryId;
@@ -161,7 +161,7 @@ class _LibraryItemsScreenState extends State<LibraryItemsScreen> {
                     } else {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => BookDetailsScreen(
+                          builder: (context) => ItemDetailsScreen(
                             itemId: item['Id'],
                             initialItem: item,
                           ),

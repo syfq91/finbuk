@@ -17,17 +17,17 @@ import 'video_player_screen.dart';
 import 'music_player_screen.dart';
 import 'audiobook_player_screen.dart';
 
-class BookDetailsScreen extends StatefulWidget {
+class ItemDetailsScreen extends StatefulWidget {
   final String itemId;
   final Map<String, dynamic>? initialItem;
 
-  const BookDetailsScreen({super.key, required this.itemId, this.initialItem});
+  const ItemDetailsScreen({super.key, required this.itemId, this.initialItem});
 
   @override
-  State<BookDetailsScreen> createState() => _BookDetailsScreenState();
+  State<ItemDetailsScreen> createState() => _ItemDetailsScreenState();
 }
 
-class _BookDetailsScreenState extends State<BookDetailsScreen> {
+class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
   bool? _isFavorite;
   bool? _isPlayed;
   File? _localFile;

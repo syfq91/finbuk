@@ -6,7 +6,7 @@ import '../providers/auth_provider.dart';
 import '../repositories/book_repository.dart';
 import '../models/item.dart';
 import 'library_items_screen.dart';
-import 'book_details_screen.dart';
+import 'item_details_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -138,7 +138,7 @@ class _ResumeSection extends StatelessWidget {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) =>
-                                BookDetailsScreen(itemId: item.id),
+                                ItemDetailsScreen(itemId: item.id),
                           ),
                         );
                       },
@@ -301,7 +301,7 @@ class _LibrarySection extends StatelessWidget {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) =>
-                                BookDetailsScreen(itemId: item.id),
+                                ItemDetailsScreen(itemId: item.id),
                           ),
                         );
                       },

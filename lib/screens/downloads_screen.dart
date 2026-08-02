@@ -4,7 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
 import '../services/file_service.dart';
 import '../models/item.dart';
-import 'book_details_screen.dart';
+import 'item_details_screen.dart';
 import 'comic_reader_screen.dart';
 import 'epub_reader_screen.dart';
 
@@ -206,7 +206,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                           onPressed: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) => BookDetailsScreen(
+                                builder: (context) => ItemDetailsScreen(
                                   itemId: item.id,
                                   initialItem: item.rawJson,
                                 ),
