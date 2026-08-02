@@ -28,7 +28,7 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 - **Local Storage**: SQLite (sqflite), SharedPreferences, flutter_secure_storage, path_provider
 - **Comic Reader**: flureadium (Readium toolkit)
 - **Media Player**: media_kit (Video/Audio engine)
-- **Build**: Java 17 with core library desugaring
+- **Build**: Java 21 with core library desugaring
 
 ## Prerequisites
 
@@ -93,7 +93,7 @@ See [AGENTS.md](AGENTS.md) for detailed architecture documentation.
 - All sensitive data stored in `flutter_secure_storage` (never in SharedPreferences)
 - SQLite caches library items to reduce API calls
 - Download manager supports up to 3 concurrent downloads with queue management
-- Core library desugaring enabled for Java 17 compatibility
+- Core library desugaring enabled for Java 21 compatibility
 
 ## Developer Notes
 
@@ -107,7 +107,7 @@ Key dependencies:
 - `dio`: HTTP client for Jellyfin API communication
 - `flureadium`: Readium-based comic/book reading engine (v0.16.0)
 - `media_kit`: Cross-platform video/audio player engine
-- `sqflite` + `sqlite3_flutter_libs`: Local SQLite database for caching
+- `sqflite`: Local SQLite database for caching
 - `provider`: Reactive state management
 - `flutter_secure_storage`: Secure credential and token storage
 - `cached_network_image`: Optimized image loading with auth headers

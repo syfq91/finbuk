@@ -1,5 +1,5 @@
 name: finbuk
-description: "Jellyfin book reader."
+description: "Android Jellyfin client for reading comics/EPUBs and playing video, music, and audiobooks with offline support."
 publish_to: 'none'
 
 version: 1.0.0+1
