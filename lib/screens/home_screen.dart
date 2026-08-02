@@ -127,8 +127,8 @@ class _ResumeSection extends StatelessWidget {
                 itemCount: math.min(items.length, 10),
                 itemBuilder: (context, index) {
                   final item = items[index];
-                  final imageUrl =
-                      '$serverUrl/Items/${item.id}/Images/Primary';
+                  final imageUrl = '$serverUrl/Items/${item.id}/Images/Primary';
+                  final playedPercentage = item.userData?['PlayedPercentage'];
 
                   return Container(
                     width: 140,
@@ -136,7 +136,7 @@ class _ResumeSection extends StatelessWidget {
                     child: InkWell(
                       onTap: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(
+                          MaterialPageRoute<void>(
                             builder: (context) =>
                                 ItemDetailsScreen(itemId: item.id),
                           ),
@@ -174,14 +174,11 @@ class _ResumeSection extends StatelessWidget {
                                       fontSize: 12,
                                     ),
                                   ),
-                                  if (item.userData?['PlayedPercentage'] !=
-                                      null)
+                                  if (playedPercentage is num)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 4),
                                       child: LinearProgressIndicator(
-                                        value:
-                                            item.userData!['PlayedPercentage'] /
-                                            100.0,
+                                        value: playedPercentage / 100.0,
                                         minHeight: 2,
                                         backgroundColor: Colors.grey.withValues(
                                           alpha: 0.3,
@@ -234,7 +231,7 @@ class _LibrarySection extends StatelessWidget {
         InkWell(
           onTap: () {
             Navigator.of(context).push(
-              MaterialPageRoute(
+              MaterialPageRoute<void>(
                 builder: (context) => LibraryItemsScreen(
                   libraryId: library.id,
                   libraryName: library.name ?? 'Library',
@@ -290,8 +287,7 @@ class _LibrarySection extends StatelessWidget {
                 itemCount: math.min(items.length, 10),
                 itemBuilder: (context, index) {
                   final item = items[index];
-                  final imageUrl =
-                      '$serverUrl/Items/${item.id}/Images/Primary';
+                  final imageUrl = '$serverUrl/Items/${item.id}/Images/Primary';
 
                   return Container(
                     width: 160,
@@ -299,7 +295,7 @@ class _LibrarySection extends StatelessWidget {
                     child: InkWell(
                       onTap: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(
+                          MaterialPageRoute<void>(
                             builder: (context) =>
                                 ItemDetailsScreen(itemId: item.id),
                           ),

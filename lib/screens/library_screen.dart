@@ -64,7 +64,7 @@ class LibraryScreen extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
+                    MaterialPageRoute<void>(
                       builder: (context) => const LibraryItemsScreen(
                         libraryName: 'Favorites',
                         isFavoriteOnly: true,
@@ -111,7 +111,7 @@ class LibraryScreen extends StatelessWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(
+                  MaterialPageRoute<void>(
                     builder: (context) => LibraryItemsScreen(
                       libraryId: library.id,
                       libraryName: library.name ?? 'Library',

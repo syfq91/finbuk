@@ -8,11 +8,7 @@ class VideoPlayerScreen extends StatefulWidget {
   final Map<String, dynamic> item;
   final String? localFilePath;
 
-  const VideoPlayerScreen({
-    super.key,
-    required this.item,
-    this.localFilePath,
-  });
+  const VideoPlayerScreen({super.key, required this.item, this.localFilePath});
 
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -32,11 +28,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final serverUrl = auth.serverUrl;
     final token = auth.token;
-    
+
     // Resume position if available (Jellyfin ticks are 10,000,000 per second)
     final userData = widget.item['UserData'] as Map<String, dynamic>?;
-    final playbackPositionTicks = userData?['PlaybackPositionTicks'] as num? ?? 0;
-    final startPosition = Duration(microseconds: (playbackPositionTicks / 10).round());
+    final playbackPositionTicks =
+        userData?['PlaybackPositionTicks'] as num? ?? 0;
+    final startPosition = Duration(
+      microseconds: (playbackPositionTicks / 10).round(),
+    );
 
     Playable playable;
     if (widget.localFilePath != null) {
@@ -49,12 +48,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         httpHeaders: token != null ? {'X-Emby-Token': token} : const {},
       );
     }
-    
+
     await player.open(playable);
     if (startPosition.inSeconds > 0) {
       await player.seek(startPosition);
     }
-    
+
     // TODO: Listen to player.stream.position and update progress to Jellyfin using JellyfinService
   }
 
@@ -78,9 +77,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         ),
       ),
       extendBodyBehindAppBar: true,
-      body: Center(
-        child: Video(controller: controller),
-      ),
+      body: Center(child: Video(controller: controller)),
     );
   }
 }

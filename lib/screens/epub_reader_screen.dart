@@ -323,7 +323,7 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
 
   void _showToc() {
     if (_publication == null) return;
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -342,7 +342,7 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
   // ---------------------------------------------------------------------------
 
   void _showSettings() {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

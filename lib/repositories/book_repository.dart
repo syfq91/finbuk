@@ -19,7 +19,9 @@ class BookRepository {
       // Return cached but update in background
       _refreshInBackground(() async {
         final rawItems = await _apiService.getUserViews(url, userId, token);
-        final items = rawItems.map((j) => Item.fromJson(j)).toList();
+        final items = rawItems
+            .map((j) => Item.fromJson(j as Map<String, dynamic>))
+            .toList();
         await _dbService.clearCategory('user_views');
         await _dbService.saveItems(items, 'user_views');
       }, 'user_views');
@@ -29,7 +31,9 @@ class BookRepository {
 
     try {
       final rawItems = await _apiService.getUserViews(url, userId, token);
-      final items = rawItems.map((json) => Item.fromJson(json)).toList();
+      final items = rawItems
+          .map((json) => Item.fromJson(json as Map<String, dynamic>))
+          .toList();
       await _dbService.clearCategory('user_views');
       await _dbService.saveItems(items, 'user_views');
       return items;
@@ -50,7 +54,9 @@ class BookRepository {
     if (cached.isNotEmpty && !forceRefresh) {
       _refreshInBackground(() async {
         final rawItems = await _apiService.getResumeItems(url, userId, token);
-        final items = rawItems.map((j) => Item.fromJson(j)).toList();
+        final items = rawItems
+            .map((j) => Item.fromJson(j as Map<String, dynamic>))
+            .toList();
         await _dbService.clearCategory('resume');
         await _dbService.saveItems(items, 'resume');
       }, 'resume');
@@ -60,7 +66,9 @@ class BookRepository {
 
     try {
       final rawItems = await _apiService.getResumeItems(url, userId, token);
-      final items = rawItems.map((json) => Item.fromJson(json)).toList();
+      final items = rawItems
+          .map((json) => Item.fromJson(json as Map<String, dynamic>))
+          .toList();
       await _dbService.clearCategory('resume');
       await _dbService.saveItems(items, 'resume');
       return items;
@@ -91,7 +99,9 @@ class BookRepository {
           token,
           parentId: parentId,
         );
-        final items = rawItems.map((j) => Item.fromJson(j)).toList();
+        final items = rawItems
+            .map((j) => Item.fromJson(j as Map<String, dynamic>))
+            .toList();
         await _dbService.clearCategory(category, parentId: parentId);
         await _dbService.saveItems(items, category);
       }, '$category (parentId: $parentId)');
@@ -106,7 +116,9 @@ class BookRepository {
         token,
         parentId: parentId,
       );
-      final items = rawItems.map((json) => Item.fromJson(json)).toList();
+      final items = rawItems
+          .map((json) => Item.fromJson(json as Map<String, dynamic>))
+          .toList();
       await _dbService.clearCategory(category, parentId: parentId);
       await _dbService.saveItems(items, category);
       return items;
@@ -140,23 +152,26 @@ class BookRepository {
         parentId: parentId,
       );
       if (cached.isNotEmpty && !forceRefresh) {
-        _refreshInBackground(() async {
-          final response = await _apiService.getItems(
-            url,
-            userId,
-            token,
-            parentId: parentId,
-            recursive: recursive,
-            limit: limit,
-            startIndex: startIndex,
-            isFavorite: isFavorite,
-          );
-          final items = (response['Items'] as List)
-              .map((j) => Item.fromJson(j))
-              .toList();
-          await _dbService.clearCategory(category, parentId: parentId);
-          await _dbService.saveItems(items, category);
-        }, '$category (parentId: $parentId, recursive: $recursive, isFavorite: $isFavorite)');
+        _refreshInBackground(
+          () async {
+            final response = await _apiService.getItems(
+              url,
+              userId,
+              token,
+              parentId: parentId,
+              recursive: recursive,
+              limit: limit,
+              startIndex: startIndex,
+              isFavorite: isFavorite,
+            );
+            final items = (response['Items'] as List)
+                .map((j) => Item.fromJson(j as Map<String, dynamic>))
+                .toList();
+            await _dbService.clearCategory(category, parentId: parentId);
+            await _dbService.saveItems(items, category);
+          },
+          '$category (parentId: $parentId, recursive: $recursive, isFavorite: $isFavorite)',
+        );
 
         return {
           'Items': cached.map((item) => item.toJson()).toList(),
@@ -178,7 +193,7 @@ class BookRepository {
 
     if (isFirstPage) {
       final items = (response['Items'] as List)
-          .map((json) => Item.fromJson(json))
+          .map((json) => Item.fromJson(json as Map<String, dynamic>))
           .toList();
       await _dbService.clearCategory(category, parentId: parentId);
       await _dbService.saveItems(items, category);

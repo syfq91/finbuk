@@ -43,7 +43,8 @@ class SettingsScreen extends StatelessWidget {
                         backgroundColor: Theme.of(
                           context,
                         ).colorScheme.primaryContainer,
-                        backgroundImage: profileImageUrl != null && auth.token != null
+                        backgroundImage:
+                            profileImageUrl != null && auth.token != null
                             ? CachedNetworkImageProvider(
                                 profileImageUrl,
                                 headers: {'X-Emby-Token': auth.token!},
@@ -80,7 +81,7 @@ class SettingsScreen extends StatelessWidget {
                   subtitle: Text(_getThemeName(themeProvider.themeMode)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
-                    showDialog(
+                    showDialog<void>(
                       context: context,
                       builder: (context) => AlertDialog(
                         title: const Text('Choose Appearance'),

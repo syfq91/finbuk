@@ -67,7 +67,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     if (ext == '.cbz' || ext == '.cbr') {
       if (mounted) {
         navigator.push(
-          MaterialPageRoute(
+          MaterialPageRoute<void>(
             builder: (context) => ComicReaderScreen(
               itemId: item.id,
               title: item.name ?? 'Comic Reader',
@@ -79,7 +79,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     } else if (ext == '.epub') {
       if (mounted) {
         navigator.push(
-          MaterialPageRoute(
+          MaterialPageRoute<void>(
             builder: (context) => EpubReaderScreen(
               itemId: item.id,
               title: item.name ?? 'EPUB Reader',
@@ -205,7 +205,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                           icon: const Icon(Icons.info_outline),
                           onPressed: () {
                             Navigator.of(context).push(
-                              MaterialPageRoute(
+                              MaterialPageRoute<void>(
                                 builder: (context) => ItemDetailsScreen(
                                   itemId: item.id,
                                   initialItem: item.rawJson,
@@ -237,7 +237,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   }
 
   void _confirmDelete(Item item) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove Download'),

@@ -33,8 +33,8 @@ class _MainScreenState extends State<MainScreen> {
     final userId = auth.userId;
     final profileImageUrl =
         (serverUrl != null && userId != null && token != null)
-            ? '$serverUrl/Users/$userId/Images/Primary'
-            : null;
+        ? '$serverUrl/Users/$userId/Images/Primary'
+        : null;
 
     final appBar = AppBar(
       title: Text(_titles[_selectedIndex]),
@@ -49,7 +49,9 @@ class _MainScreenState extends State<MainScreen> {
         InkWell(
           onTap: () {
             Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              MaterialPageRoute<void>(
+                builder: (context) => const SettingsScreen(),
+              ),
             );
           },
           child: Padding(

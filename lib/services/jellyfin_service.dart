@@ -31,21 +31,28 @@ class JellyfinService {
     };
 
     try {
-      final response = await _dio.post(
+      final response = await _dio.post<Map<String, dynamic>>(
         '$baseUrl/Users/AuthenticateByName',
         data: {'Username': username, 'Pw': password},
         options: Options(headers: headers),
       );
 
       if (response.statusCode == 200) {
-        return response.data;
+        final data = response.data;
+        if (data == null) {
+          throw Exception('Authentication failed');
+        }
+        return data;
       } else {
         throw Exception('Authentication failed');
       }
     } on DioException catch (e) {
       if (e.response != null) {
+        final errorData = e.response?.data;
         throw Exception(
-          e.response?.data['ErrorMessage'] ?? 'Authentication failed',
+          errorData is Map<String, dynamic>
+              ? errorData['ErrorMessage'] as String? ?? 'Authentication failed'
+              : 'Authentication failed',
         );
       } else {
         throw Exception('Connection failed: ${e.message}');
@@ -61,12 +68,12 @@ class JellyfinService {
     final baseUrl = _normalizeUrl(url);
 
     try {
-      final response = await _dio.get(
+      final response = await _dio.get<Map<String, dynamic>>(
         '$baseUrl/Users/$userId/Views',
         options: Options(headers: _authHeaders(token)),
       );
       // Return all library views (books, movies, tvshows, music, etc.)
-      return response.data['Items'] as List<dynamic>? ?? [];
+      return response.data?['Items'] as List<dynamic>? ?? [];
     } catch (e) {
       return [];
     }
@@ -80,7 +87,7 @@ class JellyfinService {
     final baseUrl = _normalizeUrl(url);
 
     try {
-      final response = await _dio.get(
+      final response = await _dio.get<Map<String, dynamic>>(
         '$baseUrl/Users/$userId/Items/Resume',
         queryParameters: {
           'IncludeItemTypes': 'Book,Movie,Episode,Audio,AudioBook',
@@ -88,7 +95,7 @@ class JellyfinService {
         },
         options: Options(headers: _authHeaders(token)),
       );
-      return response.data['Items'] ?? [];
+      return response.data?['Items'] as List<dynamic>? ?? [];
     } catch (e) {
       return [];
     }
@@ -108,12 +115,12 @@ class JellyfinService {
     }
 
     try {
-      final response = await _dio.get(
+      final response = await _dio.get<List<dynamic>>(
         '$baseUrl/Users/$userId/Items/Latest',
         queryParameters: queryParameters,
         options: Options(headers: _authHeaders(token)),
       );
-      return response.data;
+      return response.data ?? [];
     } catch (e) {
       return [];
     }
@@ -149,17 +156,17 @@ class JellyfinService {
     }
 
     try {
-      final response = await _dio.get(
+      final response = await _dio.get<Map<String, dynamic>>(
         '$baseUrl/Users/$userId/Items',
         queryParameters: queryParameters,
         options: Options(headers: _authHeaders(token)),
       );
       return {
-        'Items': response.data['Items'] ?? [],
-        'TotalRecordCount': response.data['TotalRecordCount'] ?? 0,
+        'Items': response.data?['Items'] ?? <dynamic>[],
+        'TotalRecordCount': response.data?['TotalRecordCount'] ?? 0,
       };
     } catch (e) {
-      return {'Items': [], 'TotalRecordCount': 0};
+      return {'Items': <dynamic>[], 'TotalRecordCount': 0};
     }
   }
 
@@ -172,11 +179,11 @@ class JellyfinService {
     final baseUrl = _normalizeUrl(url);
 
     try {
-      final response = await _dio.get(
+      final response = await _dio.get<Map<String, dynamic>>(
         '$baseUrl/Users/$userId/Items/$itemId',
         options: Options(headers: _authHeaders(token)),
       );
-      return response.data;
+      return response.data ?? <String, dynamic>{};
     } catch (e) {
       throw Exception('Failed to fetch item details');
     }
@@ -246,9 +253,15 @@ class JellyfinService {
     final endpoint = '$baseUrl/Users/$userId/FavoriteItems/$itemId';
 
     if (isFavorite) {
-      await _dio.post(endpoint, options: Options(headers: _authHeaders(token)));
+      await _dio.post<void>(
+        endpoint,
+        options: Options(headers: _authHeaders(token)),
+      );
     } else {
-      await _dio.delete(endpoint, options: Options(headers: _authHeaders(token)));
+      await _dio.delete<void>(
+        endpoint,
+        options: Options(headers: _authHeaders(token)),
+      );
     }
   }
 
@@ -263,9 +276,15 @@ class JellyfinService {
     final endpoint = '$baseUrl/Users/$userId/PlayedItems/$itemId';
 
     if (isPlayed) {
-      await _dio.post(endpoint, options: Options(headers: _authHeaders(token)));
+      await _dio.post<void>(
+        endpoint,
+        options: Options(headers: _authHeaders(token)),
+      );
     } else {
-      await _dio.delete(endpoint, options: Options(headers: _authHeaders(token)));
+      await _dio.delete<void>(
+        endpoint,
+        options: Options(headers: _authHeaders(token)),
+      );
     }
   }
 
@@ -276,7 +295,7 @@ class JellyfinService {
   ) async {
     final downloadUrl = getDownloadUrl(url, itemId, token);
     try {
-      final response = await _dio.head(
+      final response = await _dio.head<void>(
         downloadUrl,
         options: Options(headers: _authHeaders(token)),
       );
@@ -304,7 +323,7 @@ class JellyfinService {
     final baseUrl = _normalizeUrl(url);
 
     try {
-      await _dio.post(
+      await _dio.post<void>(
         '$baseUrl/Sessions/Playing',
         data: {'ItemId': itemId},
         options: Options(headers: _authHeaders(token, json: true)),
@@ -324,7 +343,7 @@ class JellyfinService {
     final baseUrl = _normalizeUrl(url);
 
     try {
-      await _dio.post(
+      await _dio.post<void>(
         '$baseUrl/Sessions/Playing/Stopped',
         data: {'ItemId': itemId, 'PositionTicks': positionTicks},
         options: Options(headers: _authHeaders(token, json: true)),
@@ -345,7 +364,7 @@ class JellyfinService {
     final baseUrl = _normalizeUrl(url);
 
     try {
-      await _dio.post(
+      await _dio.post<void>(
         '$baseUrl/Sessions/Playing/Progress',
         data: {
           'ItemId': itemId,

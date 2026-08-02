@@ -50,15 +50,19 @@ class AuthProvider with ChangeNotifier {
         urlsToTry.add(cleanUrl);
       }
 
-      dynamic lastError;
+      Object? lastError;
       for (String tryUrl in urlsToTry) {
         try {
           final data = await _service.authenticate(tryUrl, username, password);
 
           _serverUrl = tryUrl;
-          _token = data['AccessToken'];
-          _userId = data['User']['Id'];
-          _username = data['User']['Name'];
+          _token = data['AccessToken'] as String?;
+          _userId = data['User'] is Map<String, dynamic>
+              ? (data['User'] as Map<String, dynamic>)['Id'] as String?
+              : null;
+          _username = data['User'] is Map<String, dynamic>
+              ? (data['User'] as Map<String, dynamic>)['Name'] as String?
+              : null;
 
           await _secureStorage.write(key: 'serverUrl', value: _serverUrl!);
           await _secureStorage.write(key: 'token', value: _token!);

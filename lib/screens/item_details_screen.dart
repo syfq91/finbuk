@@ -134,9 +134,9 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
 
   void _updateItemData(Map<String, dynamic> item) async {
     final userData = item['UserData'];
-    if (userData != null) {
-      _isFavorite = userData['IsFavorite'] ?? false;
-      _isPlayed = userData['Played'] ?? false;
+    if (userData is Map<String, dynamic>) {
+      _isFavorite = userData['IsFavorite'] as bool? ?? false;
+      _isPlayed = userData['Played'] as bool? ?? false;
     } else {
       _isFavorite = false;
       _isPlayed = false;
@@ -315,7 +315,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
 
     await _downloadManager.startDownload(
       itemId: widget.itemId,
-      itemName: item['Name'] ?? 'Unknown',
+      itemName: item['Name'] as String? ?? 'Unknown',
       url: serverUrl,
       token: token,
       extension: ext,
@@ -446,7 +446,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
 
     await _downloadManager.startDownload(
       itemId: widget.itemId,
-      itemName: item['Name'] ?? 'Unknown',
+      itemName: item['Name'] as String? ?? 'Unknown',
       url: auth.serverUrl ?? '',
       token: auth.token ?? '',
       extension: ext,
@@ -479,20 +479,20 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
     }
     if (ext == '.cbz' || ext == '.cbr') {
       navigator.push(
-        MaterialPageRoute(
+        MaterialPageRoute<void>(
           builder: (context) => ComicReaderScreen(
-            itemId: item['Id'],
-            title: item['Name'] ?? 'Comic Reader',
+            itemId: item['Id'] as String? ?? '',
+            title: item['Name'] as String? ?? 'Comic Reader',
             filePath: _localFile?.path,
           ),
         ),
       );
     } else if (ext == '.epub') {
       navigator.push(
-        MaterialPageRoute(
+        MaterialPageRoute<void>(
           builder: (context) => EpubReaderScreen(
-            itemId: item['Id'],
-            title: item['Name'] ?? 'EPUB Reader',
+            itemId: item['Id'] as String? ?? '',
+            title: item['Name'] as String? ?? 'EPUB Reader',
             filePath: _localFile?.path,
           ),
         ),
@@ -581,7 +581,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
     }
 
     final item = _displayItem!;
-    final pageCount = item['PageCount'] ?? 0;
+    final pageCount = item['PageCount'] as int? ?? 0;
     final container = (item['Container'] ?? '').toString().toLowerCase().trim();
     final path = (item['Path'] ?? '').toString().toLowerCase().trim();
     final isComic =
@@ -589,9 +589,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
         container == 'cbr' ||
         path.endsWith('.cbz') ||
         path.endsWith('.cbr');
-    final isEpub =
-        container == 'epub' ||
-        path.endsWith('.epub');
+    final isEpub = container == 'epub' || path.endsWith('.epub');
     final itemType = (item['Type'] ?? '').toString();
     final mediaType = (item['MediaType'] ?? '').toString();
     final isVideo = itemType == 'Movie' || itemType == 'Episode';
@@ -600,12 +598,13 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
     final isMusic = isAudio && !isAudiobook;
     final playbackPositionTicks =
         (item['UserData'] as Map<String, dynamic>?)?['PlaybackPositionTicks']
-                as num? ??
-            0;
+            as num? ??
+        0;
     final hasPlaybackPosition = playbackPositionTicks > 0;
 
-    final imageUrl =
-        serverUrl != null ? '$serverUrl/Items/${item['Id']}/Images/Primary' : '';
+    final imageUrl = serverUrl != null
+        ? '$serverUrl/Items/${item['Id']}/Images/Primary'
+        : '';
     final backdropUrl =
         item['BackdropImageTags'] != null &&
             (item['BackdropImageTags'] as List).isNotEmpty &&
@@ -641,7 +640,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item['Name'] ?? 'Unknown Title',
+                    item['Name'] as String? ?? 'Unknown Title',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -668,39 +667,56 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                                 if (isVideo) {
                                   Navigator.of(context).push(
                                     MaterialPageRoute<void>(
-                                      builder: (context) => VideoPlayerScreen(item: item),
+                                      builder: (context) =>
+                                          VideoPlayerScreen(item: item),
                                     ),
                                   );
                                 } else if (isMusic) {
                                   Navigator.of(context).push(
                                     MaterialPageRoute<void>(
-                                      builder: (context) => MusicPlayerScreen(item: item),
+                                      builder: (context) =>
+                                          MusicPlayerScreen(item: item),
                                     ),
                                   );
                                 } else if (isAudiobook) {
                                   Navigator.of(context).push(
                                     MaterialPageRoute<void>(
-                                      builder: (context) => AudiobookPlayerScreen(item: item),
+                                      builder: (context) =>
+                                          AudiobookPlayerScreen(item: item),
                                     ),
                                   );
                                 } else {
-                                  _navigateToReader(context, auth, item, pageCount);
+                                  _navigateToReader(
+                                    context,
+                                    auth,
+                                    item,
+                                    pageCount,
+                                  );
                                 }
                               },
                               icon: Icon(
-                                isVideo ? Icons.play_arrow
-                                    : isMusic ? Icons.play_arrow
-                                    : isAudiobook ? Icons.headphones
+                                isVideo
+                                    ? Icons.play_arrow
+                                    : isMusic
+                                    ? Icons.play_arrow
+                                    : isAudiobook
+                                    ? Icons.headphones
                                     : Icons.menu_book,
                               ),
                               label: Text(
                                 isVideo
-                                    ? hasPlaybackPosition ? 'Continue Watching' : 'Watch Now'
+                                    ? hasPlaybackPosition
+                                          ? 'Continue Watching'
+                                          : 'Watch Now'
                                     : isMusic
-                                        ? 'Play Now'
-                                        : isAudiobook
-                                            ? hasPlaybackPosition ? 'Continue Listening' : 'Listen Now'
-                                            : hasPlaybackPosition ? 'Continue Reading' : 'Read Now',
+                                    ? 'Play Now'
+                                    : isAudiobook
+                                    ? hasPlaybackPosition
+                                          ? 'Continue Listening'
+                                          : 'Listen Now'
+                                    : hasPlaybackPosition
+                                    ? 'Continue Reading'
+                                    : 'Read Now',
                               ),
                               style: ElevatedButton.styleFrom(
                                 minimumSize: const Size(0, 48),
@@ -716,7 +732,11 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                                 ? Icons.check_circle
                                 : Icons.check_circle_outline,
                             color: _isPlayed == true ? Colors.green : null,
-                            tooltip: isVideo ? 'Mark as Watched' : isComic || isEpub ? 'Mark as Read' : 'Mark as Played',
+                            tooltip: isVideo
+                                ? 'Mark as Watched'
+                                : isComic || isEpub
+                                ? 'Mark as Read'
+                                : 'Mark as Played',
                             onPressed: () =>
                                 _togglePlayed(context, auth, service),
                           ),
@@ -749,7 +769,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    item['Overview'] ?? 'No summary available.',
+                    item['Overview'] as String? ?? 'No summary available.',
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 16),
@@ -759,7 +779,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                       children: (item['Genres'] as List)
                           .map(
                             (genre) => Chip(
-                              label: Text(genre),
+                              label: Text(genre.toString()),
                               visualDensity: VisualDensity.compact,
                             ),
                           )

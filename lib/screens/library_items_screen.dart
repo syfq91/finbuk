@@ -23,7 +23,7 @@ class LibraryItemsScreen extends StatefulWidget {
 
 class _LibraryItemsScreenState extends State<LibraryItemsScreen> {
   final ScrollController _scrollController = ScrollController();
-  List<dynamic> _items = [];
+  List<Map<String, dynamic>> _items = [];
   int _totalCount = 0;
   bool _isLoading = false;
   bool _hasMore = true;
@@ -85,7 +85,9 @@ class _LibraryItemsScreenState extends State<LibraryItemsScreen> {
         startIndex: startIndex,
         isFavorite: widget.isFavoriteOnly,
       );
-      final newItems = result['Items'] as List<dynamic>;
+      final newItems = (result['Items'] as List<dynamic>)
+          .whereType<Map<String, dynamic>>()
+          .toList();
       final totalCount = result['TotalRecordCount'] as int? ?? 0;
       if (reset) {
         _items = newItems;
@@ -136,33 +138,34 @@ class _LibraryItemsScreenState extends State<LibraryItemsScreen> {
             sliver: SliverGrid(
               delegate: SliverChildBuilderDelegate((context, index) {
                 final item = _items[index];
+                final itemType = item['Type'] as String?;
+                final itemId = item['Id'] as String? ?? '';
                 final isFolder =
-                    item['Type'] == 'Folder' ||
-                    item['Type'] == 'CollectionFolder' ||
-                    item['Type'] == 'Series' ||
-                    item['Type'] == 'Season' ||
-                    item['Type'] == 'MusicAlbum' ||
-                    item['Type'] == 'MusicArtist';
-                final imageUrl =
-                    serverUrl != null
-                        ? '$serverUrl/Items/${item['Id']}/Images/Primary'
-                        : '';
+                    itemType == 'Folder' ||
+                    itemType == 'CollectionFolder' ||
+                    itemType == 'Series' ||
+                    itemType == 'Season' ||
+                    itemType == 'MusicAlbum' ||
+                    itemType == 'MusicArtist';
+                final imageUrl = serverUrl != null
+                    ? '$serverUrl/Items/$itemId/Images/Primary'
+                    : '';
                 return InkWell(
                   onTap: () {
                     if (isFolder) {
                       Navigator.of(context).push(
-                        MaterialPageRoute(
+                        MaterialPageRoute<void>(
                           builder: (context) => LibraryItemsScreen(
-                            libraryId: item['Id'],
-                            libraryName: item['Name'] ?? 'Folder',
+                            libraryId: itemId,
+                            libraryName: item['Name'] as String? ?? 'Folder',
                           ),
                         ),
                       );
                     } else {
                       Navigator.of(context).push(
-                        MaterialPageRoute(
+                        MaterialPageRoute<void>(
                           builder: (context) => ItemDetailsScreen(
-                            itemId: item['Id'],
+                            itemId: itemId,
                             initialItem: item,
                           ),
                         ),
@@ -213,7 +216,7 @@ class _LibraryItemsScreenState extends State<LibraryItemsScreen> {
                         Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: Text(
-                            item['Name'] ?? 'Unknown',
+                            item['Name'] as String? ?? 'Unknown',
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(

@@ -24,17 +24,18 @@ class Item {
   });
 
   factory Item.fromJson(Map<String, dynamic> json) {
+    final userData = json['UserData'];
     return Item(
-      id: json['Id'] ?? '',
-      name: json['Name'],
-      type: json['Type'],
-      collectionType: json['CollectionType'],
-      userData: json['UserData'],
-      parentId: json['ParentId'],
+      id: json['Id'] as String? ?? '',
+      name: json['Name'] as String?,
+      type: json['Type'] as String?,
+      collectionType: json['CollectionType'] as String?,
+      userData: userData is Map<String, dynamic> ? userData : null,
+      parentId: json['ParentId'] as String?,
       primaryImageAspectRatio: (json['PrimaryImageAspectRatio'] is num)
-          ? json['PrimaryImageAspectRatio'].toDouble()
+          ? (json['PrimaryImageAspectRatio'] as num).toDouble()
           : null,
-      sortName: json['SortName'],
+      sortName: json['SortName'] as String?,
       rawJson: json,
     );
   }
@@ -57,6 +58,7 @@ class Item {
   }
 
   factory Item.fromDbMap(Map<String, dynamic> map) {
-    return Item.fromJson(jsonDecode(map['json']));
+    final json = jsonDecode(map['json'] as String);
+    return Item.fromJson(json as Map<String, dynamic>);
   }
 }
