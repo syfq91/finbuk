@@ -4,12 +4,13 @@ Guidance for AI coding assistants working in this repository.
 
 ## Project Overview
 
-Finbuk is a Flutter **Android-only** Jellyfin client for reading comics (CBZ) and EPUBs with offline support. It connects to a Jellyfin server, authenticates users, and provides a premium reading experience with local caching and download capabilities.
+Finbuk is a Flutter **Android-only** Jellyfin client for reading comics (CBZ) and EPUBs, and playing video and audio (Music/Audiobooks), with offline support. It connects to a Jellyfin server, authenticates users, and provides a premium experience with local caching and download capabilities.
 
 - **Tech Stack**: Flutter 3.10+, Dart, Provider (state management), Dio (HTTP), SQLite (sqflite), flutter_secure_storage
 - **Build**: Java 17 with core library desugaring enabled
 - **Target OS**: Android only (iOS is NOT supported)
 - **Reading Engine**: flureadium (Readium toolkit) for both comics and EPUBs
+- **Media Engine**: media_kit for Video, Music, and Audiobook playback
 
 ## Development Commands
 
@@ -114,6 +115,7 @@ The codebase follows a layered architecture: **screens → repositories → serv
 - **Do not** disable core library desugaring in `android/app/build.gradle.kts`.
 - **Do not** use raw `http` package directly - always go through `Dio` via `JellyfinService`.
 - **Do not** change the SQLite schema without incrementing version and adding `onUpgrade`.
+- **Do not** revert `analysis_options.yaml` strict checks. The project uses rigorous linting (`unreachable_from_main`, strict-casts, strict-inference) for best practices.
 
 ## Key Decisions
 
@@ -129,3 +131,6 @@ The codebase follows a layered architecture: **screens → repositories → serv
     - EPUB preferences also must be applied after the native reader is ready; queue updates rather than calling `setEPUBPreferences` too early.
     - Android's `MainActivity` MUST extend `FlutterFragmentActivity` for the reader to function.
     - Hardware acceleration MUST be enabled in `AndroidManifest.xml`.
+- **Media Player Implementation (media_kit)**:
+    - Video/Audio playback relies on `media_kit`. Ensure `MediaKit.ensureInitialized()` runs in `main.dart`.
+    - `Player` and `VideoController` instances must be correctly initialized in `initState` and actively disposed in `dispose` to prevent memory leaks.

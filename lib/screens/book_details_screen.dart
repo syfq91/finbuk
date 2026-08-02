@@ -563,8 +563,8 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final serverUrl = auth.serverUrl;
-    final userId = auth.userId;
     final token = auth.token;
+    final service = JellyfinService();
 
     if (_isLoading && _displayItem == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));

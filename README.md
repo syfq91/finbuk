@@ -1,6 +1,6 @@
 # Finbuk
 
-A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.org/) focused on book and comic reading with offline support.
+A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.org/) focused on book/comic reading, and video/audio playback with offline support.
 
 > **Note**: This app is currently Android-only.
 
@@ -9,6 +9,7 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 - **Jellyfin Integration**: Connect to any Jellyfin server to access your personal media library
 - **Secure Authentication**: Login with username/password, credentials stored securely via `flutter_secure_storage`
 - **Library Browsing**: Browse collections, folders, and view latest additions with cover art
+- **Media Playback**: Full support for playing Jellyfin Videos, Music, and Audiobooks via `media_kit` (with speed controls and background streaming)
 - **Advanced Readers**: High-performance, Readium-based readers for both Comics (CBZ/CBR) and Books (EPUB)
 - **EPUB Customization**: Personalize your reading experience with adjustable font sizes, themes, and layouts. Preference changes are applied after the native `ReadiumReaderWidget` is ready so settings are not lost during initialization.
 - **Offline Downloads**: Download content to internal app storage for offline reading with background progress tracking
@@ -26,6 +27,7 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 - **HTTP Client**: Dio
 - **Local Storage**: SQLite (sqflite), SharedPreferences, flutter_secure_storage, path_provider
 - **Comic Reader**: flureadium (Readium toolkit)
+- **Media Player**: media_kit (Video/Audio engine)
 - **Build**: Java 17 with core library desugaring
 
 ## Prerequisites
@@ -56,6 +58,8 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 
 - **Comics**: `.cbz`, `.cbr` (native Readium support via flureadium)
 - **Books**: `.epub` (full support via flureadium)
+- **Video**: Standard video formats (mp4, mkv, webm) (via `media_kit`)
+- **Audio**: Music and Audiobooks (mp3, flac, m4a, etc) (via `media_kit`)
 
 ## Building
 
@@ -101,7 +105,8 @@ See [AGENTS.md](AGENTS.md) for detailed architecture documentation.
 Key dependencies:
 
 - `dio`: HTTP client for Jellyfin API communication
-- `flureadium`: Readium-based comic/book reading engine
+- `flureadium`: Readium-based comic/book reading engine (v0.16.0)
+- `media_kit`: Cross-platform video/audio player engine
 - `sqflite` + `sqlite3_flutter_libs`: Local SQLite database for caching
 - `provider`: Reactive state management
 - `flutter_secure_storage`: Secure credential and token storage

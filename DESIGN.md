@@ -105,3 +105,7 @@ The layout is built on a responsive 8dp grid system.
 - **Action Buttons**: Primary actions (like Login or Download) use `FilledButton` styling with 16dp vertical padding.
 - **Search Bar**: A floating or integrated search field that provides quick access to the library.
 - **Reader Interface**: The comic reader enters an **Immersive Mode**, hiding system UI elements and using the full screen to showcase the artwork.
+- **Media Player Interface**:
+  - **Video**: Full-screen immersive UI with a black scaffold and transparent AppBar for distraction-free viewing.
+  - **Music**: Prominent, large, rounded album art (`rounded.lg`), centered metadata, and standard play/pause/skip controls using Material icons.
+  - **Audiobook**: Tailored controls emphasizing pacing with `Rewind 10s`, `Fast-Forward 30s` buttons, and an active playback speed selector in the AppBar.

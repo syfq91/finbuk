@@ -6,8 +6,11 @@ import 'providers/theme_provider.dart';
 import 'screens/main_screen.dart';
 import 'screens/login_screen.dart';
 
+import 'package:media_kit/media_kit.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
 
   runApp(
     MultiProvider(

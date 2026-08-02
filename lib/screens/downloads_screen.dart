@@ -134,6 +134,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
           final item = _downloadedItems![index];
           final auth = Provider.of<AuthProvider>(context, listen: false);
           final imageUrl = '${auth.serverUrl}/Items/${item.id}/Images/Primary';
+          final token = auth.token;
 
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
