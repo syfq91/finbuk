@@ -4,10 +4,37 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/music_player_provider.dart';
+import 'providers/homepage_provider.dart';
 import 'screens/main_screen.dart';
 import 'screens/login_screen.dart';
+import 'widgets/floating_mini_player.dart';
 
 import 'package:media_kit/media_kit.dart';
+
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+final ValueNotifier<bool> _isRootRouteNotifier = ValueNotifier<bool>(true);
+
+class _AppNavigatorObserver extends NavigatorObserver {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _isRootRouteNotifier.value = previousRoute == null;
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _isRootRouteNotifier.value = previousRoute == null;
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _isRootRouteNotifier.value = previousRoute == null;
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    _isRootRouteNotifier.value = newRoute == null;
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +46,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => MusicPlayerProvider()),
+        ChangeNotifierProvider(create: (_) => HomepageProvider()),
       ],
       child: const FinbukApp(),
     ),
@@ -34,6 +62,8 @@ class FinbukApp extends StatelessWidget {
 
     return MaterialApp(
       title: 'Finbuk Jellyfin Client',
+      navigatorKey: appNavigatorKey,
+      navigatorObservers: [_AppNavigatorObserver()],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -57,6 +87,27 @@ class FinbukApp extends StatelessWidget {
       themeMode: themeProvider.themeMode,
       home: const AuthWrapper(),
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            ?child,
+            ValueListenableBuilder<bool>(
+              valueListenable: _isRootRouteNotifier,
+              builder: (context, isRoot, _) {
+                if (isRoot) return const SizedBox.shrink();
+                return Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: FloatingMiniPlayer(
+                    navigatorKey: appNavigatorKey,
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -68,7 +119,6 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
 
-    // Show main screen (with navigation) if authenticated, otherwise login
     if (auth.isAuthenticated) {
       return const MainScreen();
     } else {

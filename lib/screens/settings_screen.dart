@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
+import 'homepage_settings_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -126,6 +127,19 @@ class SettingsScreen extends StatelessWidget {
                             ),
                           ],
                         ),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.home_max_outlined),
+                  title: const Text('Customize Homepage'),
+                  subtitle: const Text('Rearrange and toggle visible library rows'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (context) => const HomepageSettingsScreen(),
                       ),
                     );
                   },

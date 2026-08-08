@@ -42,7 +42,7 @@ The codebase follows a layered architecture: **screens → repositories → serv
 
 - `lib/main.dart`: App entry, MultiProvider setup, theme config, AuthWrapper
 - `lib/models/`: Data models (notably `item.dart` which wraps Jellyfin JSON)
-- `lib/providers/`: State management (`AuthProvider`, `ThemeProvider`)
+- `lib/providers/`: State management (`AuthProvider`, `ThemeProvider`, `MusicPlayerProvider`, `HomepageProvider`)
 - `lib/repositories/`: Business logic, data aggregation, caching (`BookRepository`)
 - `lib/services/`: Low-level operations
   - `jellyfin_service.dart`: Jellyfin API client (Dio)

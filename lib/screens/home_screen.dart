@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
+import '../providers/homepage_provider.dart';
 import '../repositories/book_repository.dart';
 import '../models/item.dart';
 import 'library_items_screen.dart';
@@ -14,6 +15,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
+    final homepageProvider = Provider.of<HomepageProvider>(context);
     final serverUrl = auth.serverUrl;
     final userId = auth.userId;
     final token = auth.token;
@@ -40,18 +42,59 @@ class HomeScreen extends StatelessWidget {
         }
 
         final libraries = snapshot.data!;
+        final availableIds = ['resume', ...libraries.map((l) => l.id)];
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          homepageProvider.syncAvailableSections(availableIds);
+        });
+
+        // Determine ordered & visible section IDs
+        final orderedIds = (homepageProvider.sectionOrder.isNotEmpty
+                ? homepageProvider.sectionOrder
+                : availableIds)
+            .where((id) {
+          return availableIds.contains(id) &&
+              homepageProvider.isSectionVisible(id);
+        }).toList();
+
+        if (orderedIds.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.visibility_off_outlined,
+                  size: 64,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No homepage sections visible',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                const Text('Customize visible libraries in Settings.'),
+              ],
+            ),
+          );
+        }
+
         return ListView(
           padding: const EdgeInsets.symmetric(vertical: 16),
-          children: [
-            _ResumeSection(auth: auth, repository: repository),
-            ...libraries.map(
-              (library) => _LibrarySection(
-                library: library,
+          children: orderedIds.map<Widget>((sectionId) {
+            if (sectionId == 'resume') {
+              return _ResumeSection(auth: auth, repository: repository);
+            } else {
+              final matching =
+                  libraries.where((l) => l.id == sectionId).toList();
+              if (matching.isEmpty) return const SizedBox.shrink();
+              return _LibrarySection(
+                library: matching.first,
                 auth: auth,
                 repository: repository,
-              ),
-            ),
-          ],
+              );
+            }
+          }).toList(),
         );
       },
     );
@@ -225,60 +268,60 @@ class _LibrarySection extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InkWell(
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (context) => LibraryItemsScreen(
-                  libraryId: library.id,
-                  libraryName: library.name ?? 'Library',
-                ),
-              ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Newly Added in ${library.name}',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+    return FutureBuilder<List<Item>>(
+      future: repository.getLatestMedia(
+        serverUrl,
+        userId,
+        token,
+        parentId: library.id,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            (!snapshot.hasData || snapshot.data!.isEmpty)) {
+          return const SizedBox.shrink();
+        }
+
+        if (snapshot.hasError ||
+            !snapshot.hasData ||
+            snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final items = snapshot.data!;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => LibraryItemsScreen(
+                      libraryId: library.id,
+                      libraryName: library.name ?? 'Library',
                     ),
                   ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Newly Added in ${library.name}',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: Colors.grey),
+                  ],
                 ),
-                const Icon(Icons.chevron_right, color: Colors.grey),
-              ],
+              ),
             ),
-          ),
-        ),
-        SizedBox(
-          height: 280,
-          child: FutureBuilder<List<Item>>(
-            future: repository.getLatestMedia(
-              serverUrl,
-              userId,
-              token,
-              parentId: library.id,
-            ),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting &&
-                  (!snapshot.hasData || snapshot.data!.isEmpty)) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (snapshot.hasError ||
-                  !snapshot.hasData ||
-                  snapshot.data!.isEmpty) {
-                return const SizedBox.shrink();
-              }
-
-              final items = snapshot.data!;
-              return ListView.builder(
+            SizedBox(
+              height: 280,
+              child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(
@@ -337,11 +380,11 @@ class _LibrarySection extends StatelessWidget {
                     ),
                   );
                 },
-              );
-            },
-          ),
-        ),
-      ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

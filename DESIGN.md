@@ -105,8 +105,8 @@ The layout is built on a responsive 8dp grid system.
 - **Action Buttons**: Primary actions (like Login or Download) use `FilledButton` styling with 16dp vertical padding.
 - **Search Bar**: A floating or integrated search field that provides quick access to the library.
 - **Reader Interface**: The comic reader enters an **Immersive Mode**, hiding system UI elements and using the full screen to showcase the artwork.
-- **Media Player Interface**:
-  - **Video**: Full-screen immersive UI with a black scaffold and transparent AppBar for distraction-free viewing.
-  - **Music**: Prominent, large, rounded album art (`rounded.lg`), centered metadata, and standard play/pause/skip controls using Material icons.
-  - **Audiobook**: Tailored controls emphasizing pacing with `Rewind 10s`, `Fast-Forward 30s` buttons, and an active playback speed selector in the AppBar.
-  - **Controls & Timestamps**: All media players (Video, Music, Audiobook) display initial duration via `RunTimeTicks` fallback while buffering, format durations cleanly as `MM:SS` (or `H:MM:SS` for 1h+), and display the remaining playback time (`-MM:SS`) on the right side of the seek bar.
+- **Homepage Customization Interface**:
+  - Accessible via **Settings → Customize Homepage**.
+  - Uses `ReorderableListView` drag handles for reordering library rows (e.g. TV Shows above Music).
+  - Provides instant toggle switches (`Switch`) to enable or disable specific library sections on the home screen.
+  - Custom section ordering and hidden state are stored persistently in `SharedPreferences`.

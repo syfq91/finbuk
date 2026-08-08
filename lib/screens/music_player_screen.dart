@@ -21,8 +21,17 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<MusicPlayerProvider>(context, listen: false)
+            .setFullPlayerOpen(true);
+      }
       _initPlayer();
     });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   void _initPlayer() {
@@ -61,7 +70,14 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
 
-    return Consumer<MusicPlayerProvider>(
+    return PopScope(
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          Provider.of<MusicPlayerProvider>(context, listen: false)
+              .setFullPlayerOpen(false);
+        }
+      },
+      child: Consumer<MusicPlayerProvider>(
       builder: (context, musicPlayer, _) {
         final item = musicPlayer.currentItem ?? widget.item;
         final imageUrl = auth.serverUrl != null
@@ -201,6 +217,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> {
           ),
         );
       },
+      ),
     );
   }
 }

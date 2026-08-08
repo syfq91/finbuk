@@ -14,6 +14,7 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 - **EPUB Customization**: Personalize your reading experience with adjustable font sizes, themes, and layouts. Preference changes are applied after the native `ReadiumReaderWidget` is ready so settings are not lost during initialization.
 - **Offline Downloads**: Download content to internal app storage for offline reading with background progress tracking
 - **Favorites & Read Status**: Mark items as favorite or played/unplayed
+- **Homepage Customization**: Reorder homepage library rows (e.g. TV Shows above Music) and toggle visibility of individual libraries in Settings
 - **Local Database**: SQLite-based caching for faster library loading and download management
 - **Dark/Light/System Theme**: Material Design 3 with dynamic theme switching
 - **Responsive UI**: Adaptive layout with bottom navigation bar (mobile) or navigation rail (tablet/desktop)
