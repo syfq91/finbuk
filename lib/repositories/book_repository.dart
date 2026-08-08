@@ -138,10 +138,13 @@ class BookRepository {
     int? startIndex,
     bool isFavorite = false,
     bool forceRefresh = false,
+    String? includeItemTypes,
+    String? genreIds,
   }) async {
     // For paginated items, caching is more complex.
     // For now, let's cache the first page or small sets.
-    final category = 'items_${parentId ?? "root"}_${recursive}_$isFavorite';
+    final category =
+        'items_${parentId ?? "root"}_${recursive}_${isFavorite}_${includeItemTypes ?? "all"}';
 
     // Only cache if we are getting the first page or it's not paginated
     final isFirstPage = (startIndex == null || startIndex == 0);
@@ -163,6 +166,8 @@ class BookRepository {
               limit: limit,
               startIndex: startIndex,
               isFavorite: isFavorite,
+              includeItemTypes: includeItemTypes,
+              genreIds: genreIds,
             );
             final items = (response['Items'] as List)
                 .map((j) => Item.fromJson(j as Map<String, dynamic>))
@@ -189,6 +194,8 @@ class BookRepository {
       limit: limit,
       startIndex: startIndex,
       isFavorite: isFavorite,
+      includeItemTypes: includeItemTypes,
+      genreIds: genreIds,
     );
 
     if (isFirstPage) {

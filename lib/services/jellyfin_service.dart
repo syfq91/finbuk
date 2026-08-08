@@ -135,11 +135,14 @@ class JellyfinService {
     int? limit,
     int? startIndex,
     bool isFavorite = false,
+    String? includeItemTypes,
+    String? genreIds,
   }) async {
     final baseUrl = _normalizeUrl(url);
 
     final Map<String, dynamic> queryParameters = {
       'IncludeItemTypes':
+          includeItemTypes ??
           'Book,Folder,CollectionFolder,Movie,Episode,Series,Season,Audio,MusicAlbum,MusicArtist,AudioBook',
       'Recursive': recursive,
       'Fields': 'PrimaryImageAspectRatio,SortName,Type,UserData',
@@ -153,6 +156,9 @@ class JellyfinService {
     }
     if (isFavorite) {
       queryParameters['Filters'] = 'IsFavorite';
+    }
+    if (genreIds != null) {
+      queryParameters['GenreIds'] = genreIds;
     }
 
     try {
@@ -375,6 +381,31 @@ class JellyfinService {
       );
     } catch (e) {
       // Silently fail
+    }
+  }
+
+  Future<List<dynamic>> getGenres(
+    String url,
+    String userId,
+    String token, {
+    String? parentId,
+  }) async {
+    final baseUrl = _normalizeUrl(url);
+
+    final Map<String, dynamic> queryParameters = <String, dynamic>{};
+    if (parentId != null) {
+      queryParameters['ParentId'] = parentId;
+    }
+
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '$baseUrl/Genres',
+        queryParameters: queryParameters,
+        options: Options(headers: _authHeaders(token)),
+      );
+      return response.data?['Items'] as List<dynamic>? ?? [];
+    } catch (e) {
+      return [];
     }
   }
 

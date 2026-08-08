@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import '../repositories/book_repository.dart';
 import '../models/item.dart';
 import 'library_items_screen.dart';
+import 'music_library_screen.dart';
 
 class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
@@ -110,14 +111,24 @@ class LibraryScreen extends StatelessWidget {
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => LibraryItemsScreen(
-                      libraryId: library.id,
-                      libraryName: library.name ?? 'Library',
+                if (collectionType == 'music') {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => MusicLibraryScreen(
+                        library: library,
+                      ),
                     ),
-                  ),
-                );
+                  );
+                } else {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => LibraryItemsScreen(
+                        libraryId: library.id,
+                        libraryName: library.name ?? 'Library',
+                      ),
+                    ),
+                  );
+                }
               },
             );
           },
