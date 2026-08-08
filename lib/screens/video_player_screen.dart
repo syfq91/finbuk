@@ -102,7 +102,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         ? Duration(microseconds: (runTimeTicks / 10).round())
         : Duration.zero;
     final totalDuration =
-        duration > Duration.zero ? duration : fallbackDuration;
+        fallbackDuration > Duration.zero ? fallbackDuration : duration;
     final remainingDuration = totalDuration > position
         ? totalDuration - position
         : Duration.zero;
