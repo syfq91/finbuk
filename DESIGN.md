@@ -109,3 +109,4 @@ The layout is built on a responsive 8dp grid system.
   - **Video**: Full-screen immersive UI with a black scaffold and transparent AppBar for distraction-free viewing.
   - **Music**: Prominent, large, rounded album art (`rounded.lg`), centered metadata, and standard play/pause/skip controls using Material icons.
   - **Audiobook**: Tailored controls emphasizing pacing with `Rewind 10s`, `Fast-Forward 30s` buttons, and an active playback speed selector in the AppBar.
+  - **Controls & Timestamps**: All media players (Video, Music, Audiobook) display initial duration via `RunTimeTicks` fallback while buffering, format durations cleanly as `MM:SS` (or `H:MM:SS` for 1h+), and display the remaining playback time (`-MM:SS`) on the right side of the seek bar.

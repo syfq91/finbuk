@@ -36,11 +36,16 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
     final serverUrl = auth.serverUrl;
     final token = auth.token;
 
+    final runTimeTicks = widget.item['RunTimeTicks'] as num?;
+    final fallbackDuration = runTimeTicks != null && runTimeTicks > 0
+        ? Duration(microseconds: (runTimeTicks / 10).round())
+        : Duration.zero;
+
     player.stream.position.listen((p) {
       if (mounted) setState(() => position = p);
     });
     player.stream.duration.listen((d) {
-      if (mounted) setState(() => duration = d);
+      if (mounted && d > Duration.zero) setState(() => duration = d);
     });
     player.stream.playing.listen((p) {
       if (mounted) setState(() => isPlaying = p);
@@ -48,6 +53,10 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
     player.stream.rate.listen((r) {
       if (mounted) setState(() => playbackRate = r);
     });
+
+    if (fallbackDuration > Duration.zero && mounted) {
+      setState(() => duration = fallbackDuration);
+    }
 
     final userData = widget.item['UserData'] as Map<String, dynamic>?;
     final playbackPositionTicks =
@@ -81,9 +90,12 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
 
   String _formatDuration(Duration d) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
-    String twoDigitMinutes = twoDigits(d.inMinutes.remainder(60));
-    String twoDigitSeconds = twoDigits(d.inSeconds.remainder(60));
-    return '${twoDigits(d.inHours)}:$twoDigitMinutes:$twoDigitSeconds';
+    String minutes = twoDigits(d.inMinutes.remainder(60));
+    String seconds = twoDigits(d.inSeconds.remainder(60));
+    if (d.inHours > 0) {
+      return '${d.inHours}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 
   void _skip(Duration offset) {
@@ -111,6 +123,16 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
     final imageUrl =
         '${auth.serverUrl}/Items/${widget.item['Id']}/Images/Primary';
     final token = auth.token;
+
+    final runTimeTicks = widget.item['RunTimeTicks'] as num?;
+    final fallbackDuration = runTimeTicks != null && runTimeTicks > 0
+        ? Duration(microseconds: (runTimeTicks / 10).round())
+        : Duration.zero;
+    final totalDuration =
+        duration > Duration.zero ? duration : fallbackDuration;
+    final remainingDuration = totalDuration > position
+        ? totalDuration - position
+        : Duration.zero;
 
     return Scaffold(
       appBar: AppBar(
@@ -178,13 +200,13 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
             Slider(
               value: position.inMilliseconds.toDouble().clamp(
                 0.0,
-                duration.inMilliseconds.toDouble() > 0
-                    ? duration.inMilliseconds.toDouble()
+                totalDuration.inMilliseconds.toDouble() > 0
+                    ? totalDuration.inMilliseconds.toDouble()
                     : 1.0,
               ),
               min: 0.0,
-              max: duration.inMilliseconds.toDouble() > 0
-                  ? duration.inMilliseconds.toDouble()
+              max: totalDuration.inMilliseconds.toDouble() > 0
+                  ? totalDuration.inMilliseconds.toDouble()
                   : 1.0,
               onChanged: (v) {
                 player.seek(Duration(milliseconds: v.round()));
@@ -198,7 +220,7 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
                   style: const TextStyle(fontSize: 12),
                 ),
                 Text(
-                  _formatDuration(duration),
+                  '-${_formatDuration(remainingDuration)}',
                   style: const TextStyle(fontSize: 12),
                 ),
               ],

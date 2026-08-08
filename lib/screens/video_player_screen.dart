@@ -17,6 +17,9 @@ class VideoPlayerScreen extends StatefulWidget {
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   late final Player player = Player();
   late final VideoController controller = VideoController(player);
+  Duration position = Duration.zero;
+  Duration duration = Duration.zero;
+  bool isPlaying = false;
 
   @override
   void initState() {
@@ -28,6 +31,25 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final serverUrl = auth.serverUrl;
     final token = auth.token;
+
+    final runTimeTicks = widget.item['RunTimeTicks'] as num?;
+    final fallbackDuration = runTimeTicks != null && runTimeTicks > 0
+        ? Duration(microseconds: (runTimeTicks / 10).round())
+        : Duration.zero;
+
+    player.stream.position.listen((p) {
+      if (mounted) setState(() => position = p);
+    });
+    player.stream.duration.listen((d) {
+      if (mounted && d > Duration.zero) setState(() => duration = d);
+    });
+    player.stream.playing.listen((p) {
+      if (mounted) setState(() => isPlaying = p);
+    });
+
+    if (fallbackDuration > Duration.zero && mounted) {
+      setState(() => duration = fallbackDuration);
+    }
 
     // Resume position if available (Jellyfin ticks are 10,000,000 per second)
     final userData = widget.item['UserData'] as Map<String, dynamic>?;
@@ -63,8 +85,28 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     super.dispose();
   }
 
+  String _formatDuration(Duration d) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String minutes = twoDigits(d.inMinutes.remainder(60));
+    String seconds = twoDigits(d.inSeconds.remainder(60));
+    if (d.inHours > 0) {
+      return '${d.inHours}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final runTimeTicks = widget.item['RunTimeTicks'] as num?;
+    final fallbackDuration = runTimeTicks != null && runTimeTicks > 0
+        ? Duration(microseconds: (runTimeTicks / 10).round())
+        : Duration.zero;
+    final totalDuration =
+        duration > Duration.zero ? duration : fallbackDuration;
+    final remainingDuration = totalDuration > position
+        ? totalDuration - position
+        : Duration.zero;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -77,7 +119,82 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         ),
       ),
       extendBodyBehindAppBar: true,
-      body: Center(child: Video(controller: controller)),
+      body: Stack(
+        children: [
+          Center(child: Video(controller: controller)),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [Colors.black87, Colors.transparent],
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SliderTheme(
+                      data: SliderThemeData(
+                        thumbColor: Colors.white,
+                        activeTrackColor: Colors.white,
+                        inactiveTrackColor: Colors.white30,
+                        trackHeight: 2,
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 6,
+                        ),
+                        overlayShape: const RoundSliderOverlayShape(
+                          overlayRadius: 12,
+                        ),
+                      ),
+                      child: Slider(
+                        value: position.inMilliseconds.toDouble().clamp(
+                          0.0,
+                          totalDuration.inMilliseconds.toDouble() > 0
+                              ? totalDuration.inMilliseconds.toDouble()
+                              : 1.0,
+                        ),
+                        min: 0.0,
+                        max: totalDuration.inMilliseconds.toDouble() > 0
+                            ? totalDuration.inMilliseconds.toDouble()
+                            : 1.0,
+                        onChanged: (v) {
+                          player.seek(Duration(milliseconds: v.round()));
+                        },
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _formatDuration(position),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          '-${_formatDuration(remainingDuration)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

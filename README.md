@@ -9,7 +9,7 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 - **Jellyfin Integration**: Connect to any Jellyfin server to access your personal media library
 - **Secure Authentication**: Login with username/password, credentials stored securely via `flutter_secure_storage`
 - **Library Browsing**: Browse collections, folders, and view latest additions with cover art
-- **Media Playback**: Full support for playing Jellyfin Videos, Music, and Audiobooks via `media_kit` (with speed controls and background streaming)
+- **Media Playback**: Full support for playing Jellyfin Videos, Music, and Audiobooks via `media_kit` (with total duration buffering fallback, remaining time countdown display, speed controls, and background streaming)
 - **Advanced Readers**: High-performance, Readium-based readers for both Comics (CBZ/CBR) and Books (EPUB)
 - **EPUB Customization**: Personalize your reading experience with adjustable font sizes, themes, and layouts. Preference changes are applied after the native `ReadiumReaderWidget` is ready so settings are not lost during initialization.
 - **Offline Downloads**: Download content to internal app storage for offline reading with background progress tracking
@@ -28,7 +28,7 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 - **Local Storage**: SQLite (sqflite), SharedPreferences, flutter_secure_storage, path_provider
 - **Comic Reader**: flureadium (Readium toolkit)
 - **Media Player**: media_kit (Video/Audio engine)
-- **Build**: Java 21 with core library desugaring
+- **Build**: Java 21 with core library desugaring and Android `compileSdk 37`
 
 ## Prerequisites
 

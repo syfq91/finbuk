@@ -134,3 +134,8 @@ The codebase follows a layered architecture: **screens → repositories → serv
 - **Media Player Implementation (media_kit)**:
     - Video/Audio playback relies on `media_kit`. Ensure `MediaKit.ensureInitialized()` runs in `main.dart`.
     - `Player` and `VideoController` instances must be correctly initialized in `initState` and actively disposed in `dispose` to prevent memory leaks.
+    - Total track/video duration uses item `RunTimeTicks` metadata as fallback when stream duration is buffering or unemitted (`duration > Duration.zero ? duration : fallbackDuration`).
+    - Standardize seekbar right label as remaining time countdown (`-${_formatDuration(remainingDuration)}`).
+    - Format duration dynamically as `MM:SS` for under an hour and `H:MM:SS` for 1 hour or longer.
+- **Android Gradle SDK Version**:
+    - Android `compileSdk` must be set to `37` (or higher) in `android/app/build.gradle.kts` to fulfill `flutter_secure_storage` requirements.
