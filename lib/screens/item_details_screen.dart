@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../models/item.dart';
 import '../providers/auth_provider.dart';
 import '../repositories/book_repository.dart';
 import '../services/download_manager.dart';
@@ -39,6 +40,8 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
   Map<String, dynamic>? _displayItem;
   bool _isLoading = false;
   bool _isFetchingDetails = false;
+  List<Map<String, dynamic>> _albumTracks = [];
+  bool _isLoadingTracks = false;
 
   final FileService _fileService = FileService();
   final DownloadManager _downloadManager = DownloadManager();
@@ -156,9 +159,79 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
       _localFile = null;
     }
 
+    final itemType = (item['Type'] ?? '').toString();
+    if (itemType == 'MusicAlbum' && _albumTracks.isEmpty && !_isLoadingTracks) {
+      _fetchAlbumTracks();
+    }
+
     if (mounted) {
       setState(() {});
     }
+  }
+
+  Future<void> _fetchAlbumTracks() async {
+    if (_isLoadingTracks) return;
+    setState(() {
+      _isLoadingTracks = true;
+    });
+
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final server = auth.serverUrl;
+      final userId = auth.userId;
+      final token = auth.token;
+      if (server == null || userId == null || token == null) {
+        if (mounted) setState(() => _isLoadingTracks = false);
+        return;
+      }
+
+      final result = await _repository.getItems(
+        server,
+        userId,
+        token,
+        parentId: widget.itemId,
+        includeItemTypes: 'Audio',
+      );
+
+      final items = result['Items'] as List<Item>? ?? <Item>[];
+      final rawTracks = items.map((item) => item.rawJson).toList();
+
+      rawTracks.sort((a, b) {
+        final discA = (a['ParentIndexNumber'] as num?)?.toInt() ?? 1;
+        final discB = (b['ParentIndexNumber'] as num?)?.toInt() ?? 1;
+        if (discA != discB) {
+          return discA.compareTo(discB);
+        }
+        final trackA = (a['IndexNumber'] as num?)?.toInt() ?? 0;
+        final trackB = (b['IndexNumber'] as num?)?.toInt() ?? 0;
+        return trackA.compareTo(trackB);
+      });
+
+      if (mounted) {
+        setState(() {
+          _albumTracks = rawTracks;
+          _isLoadingTracks = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingTracks = false;
+        });
+      }
+    }
+  }
+
+  String _formatDurationFromTicks(num? ticks) {
+    if (ticks == null || ticks <= 0) return '--:--';
+    final d = Duration(microseconds: (ticks / 10).round());
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(d.inMinutes.remainder(60));
+    final seconds = twoDigits(d.inSeconds.remainder(60));
+    if (d.inHours > 0) {
+      return '${d.inHours}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 
   String _fileServiceGetExtensionSafe(Map<String, dynamic> item) {
@@ -326,10 +399,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
     // UI updates handled by listener
   }
 
-  Future<void> _toggleFavorite(
-    BuildContext context,
-    AuthProvider auth,
-  ) async {
+  Future<void> _toggleFavorite(BuildContext context, AuthProvider auth) async {
     final messenger = ScaffoldMessenger.of(context);
     final serverUrl = auth.serverUrl;
     final userId = auth.userId;
@@ -356,10 +426,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
     }
   }
 
-  Future<void> _togglePlayed(
-    BuildContext context,
-    AuthProvider auth,
-  ) async {
+  Future<void> _togglePlayed(BuildContext context, AuthProvider auth) async {
     final messenger = ScaffoldMessenger.of(context);
     final serverUrl = auth.serverUrl;
     final userId = auth.userId;
@@ -479,32 +546,37 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
       return;
     }
     final type = item['Type'] as String? ?? '';
-    final isVideo = type == 'Movie' ||
+    final isVideo =
+        type == 'Movie' ||
         type == 'Episode' ||
         type == 'Video' ||
         const ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'].contains(ext);
     final isAudiobook = type == 'AudioBook' || ext == '.m4b';
-    final isMusic = type == 'Audio' ||
+    final isMusic =
+        type == 'Audio' ||
         (!isAudiobook &&
-            const ['.mp3', '.flac', '.m4a', '.aac', '.ogg', '.opus', '.wav']
-                .contains(ext));
+            const [
+              '.mp3',
+              '.flac',
+              '.m4a',
+              '.aac',
+              '.ogg',
+              '.opus',
+              '.wav',
+            ].contains(ext));
 
     if (isVideo) {
       navigator.push(
         MaterialPageRoute<void>(
-          builder: (context) => VideoPlayerScreen(
-            item: item,
-            localFilePath: _localFile?.path,
-          ),
+          builder: (context) =>
+              VideoPlayerScreen(item: item, localFilePath: _localFile?.path),
         ),
       );
     } else if (isMusic) {
       navigator.push(
         MaterialPageRoute<void>(
-          builder: (context) => MusicPlayerScreen(
-            item: item,
-            localFilePath: _localFile?.path,
-          ),
+          builder: (context) =>
+              MusicPlayerScreen(item: item, localFilePath: _localFile?.path),
         ),
       );
     } else if (isAudiobook) {
@@ -633,7 +705,16 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
     final isVideo = itemType == 'Movie' || itemType == 'Episode';
     final isAudio = mediaType == 'Audio';
     final isAudiobook = itemType == 'AudioBook';
-    final isMusic = isAudio && !isAudiobook;
+    final isMusicAlbum = itemType == 'MusicAlbum';
+    final isMusicTrack = isAudio && !isAudiobook;
+    final isMusic = isMusicTrack || isMusicAlbum;
+    final showActionButtons =
+        isComic ||
+        isEpub ||
+        isVideo ||
+        isAudiobook ||
+        isMusicTrack ||
+        isMusicAlbum;
     final playbackPositionTicks =
         (item['UserData'] as Map<String, dynamic>?)?['PlaybackPositionTicks']
             as num? ??
@@ -649,6 +730,18 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
             serverUrl != null
         ? '$serverUrl/Items/${item['Id']}/Images/Backdrop'
         : null;
+
+    final artistName =
+        (item['Artists'] as List?)?.join(', ') ??
+        (item['AlbumArtist'] as String?);
+    final year = item['ProductionYear'];
+    final subtitleParts = <String>[
+      if (artistName != null && artistName.isNotEmpty) artistName,
+      if (year != null) '$year',
+    ];
+
+    final overview = item['Overview'] as String?;
+    final hasOverview = overview != null && overview.trim().isNotEmpty;
 
     return Scaffold(
       body: CustomScrollView(
@@ -683,17 +776,18 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  if (item['ProductionYear'] != null)
+                  if (subtitleParts.isNotEmpty) ...[
+                    const SizedBox(height: 8),
                     Text(
-                      '${item['ProductionYear']}',
+                      subtitleParts.join(' • '),
                       style: Theme.of(
                         context,
                       ).textTheme.titleMedium?.copyWith(color: Colors.grey),
                     ),
+                  ],
                   const SizedBox(height: 24),
 
-                  if (isComic || isEpub || isVideo || isMusic || isAudiobook)
+                  if (showActionButtons)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 24.0),
                       child: Row(
@@ -701,48 +795,72 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                           Expanded(
                             flex: 3,
                             child: ElevatedButton.icon(
-                              onPressed: () {
-                                if (isVideo) {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (context) => VideoPlayerScreen(
-                                        item: item,
-                                        localFilePath: _localFile?.path,
-                                      ),
-                                    ),
-                                  );
-                                } else if (isMusic) {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (context) => MusicPlayerScreen(
-                                        item: item,
-                                        localFilePath: _localFile?.path,
-                                      ),
-                                    ),
-                                  );
-                                } else if (isAudiobook) {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (context) =>
-                                          AudiobookPlayerScreen(
-                                        item: item,
-                                        localFilePath: _localFile?.path,
-                                      ),
-                                    ),
-                                  );
-                                } else {
-                                  _navigateToReader(
-                                    context,
-                                    auth,
-                                    item,
-                                    pageCount,
-                                  );
-                                }
-                              },
+                              onPressed: (isMusicAlbum && _albumTracks.isEmpty)
+                                  ? null
+                                  : () {
+                                      if (isVideo) {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute<void>(
+                                            builder: (context) =>
+                                                VideoPlayerScreen(
+                                                  item: item,
+                                                  localFilePath:
+                                                      _localFile?.path,
+                                                ),
+                                          ),
+                                        );
+                                      } else if (isMusicAlbum) {
+                                        if (_albumTracks.isNotEmpty) {
+                                          final firstTrack =
+                                              Map<String, dynamic>.from(
+                                                _albumTracks.first,
+                                              );
+                                          if (firstTrack['AlbumId'] == null) {
+                                            firstTrack['AlbumId'] =
+                                                widget.itemId;
+                                          }
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute<void>(
+                                              builder: (context) =>
+                                                  MusicPlayerScreen(
+                                                    item: firstTrack,
+                                                  ),
+                                            ),
+                                          );
+                                        }
+                                      } else if (isMusicTrack) {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute<void>(
+                                            builder: (context) =>
+                                                MusicPlayerScreen(
+                                                  item: item,
+                                                  localFilePath:
+                                                      _localFile?.path,
+                                                ),
+                                          ),
+                                        );
+                                      } else if (isAudiobook) {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute<void>(
+                                            builder: (context) =>
+                                                AudiobookPlayerScreen(
+                                                  item: item,
+                                                  localFilePath:
+                                                      _localFile?.path,
+                                                ),
+                                          ),
+                                        );
+                                      } else {
+                                        _navigateToReader(
+                                          context,
+                                          auth,
+                                          item,
+                                          pageCount,
+                                        );
+                                      }
+                                    },
                               icon: Icon(
-                                isVideo
-                                    ? Icons.play_arrow
-                                    : isMusic
+                                isVideo || isMusic
                                     ? Icons.play_arrow
                                     : isAudiobook
                                     ? Icons.headphones
@@ -753,7 +871,9 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                                     ? hasPlaybackPosition
                                           ? 'Continue Watching'
                                           : 'Watch Now'
-                                    : isMusic
+                                    : isMusicAlbum
+                                    ? 'Play Album'
+                                    : isMusicTrack
                                     ? 'Play Now'
                                     : isAudiobook
                                     ? hasPlaybackPosition
@@ -793,29 +913,151 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                             tooltip: 'Favorite',
                             onPressed: () => _toggleFavorite(context, auth),
                           ),
-                          const SizedBox(width: 8),
-
-                          SizedBox(
-                            width: 48,
-                            height: 48,
-                            child: _buildDownloadButton(context, auth, item),
-                          ),
+                          if (!isMusicAlbum) ...[
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: _buildDownloadButton(context, auth, item),
+                            ),
+                          ],
                         ],
                       ),
                     ),
 
-                  Text(
-                    'Summary',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  if (isMusicAlbum) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Tracks',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        if (_albumTracks.isNotEmpty)
+                          Text(
+                            '${_albumTracks.length} ${_albumTracks.length == 1 ? "track" : "tracks"}',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: Colors.grey),
+                          ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    item['Overview'] as String? ?? 'No summary available.',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 8),
+                    if (_isLoadingTracks)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24.0),
+                          child: CircularProgressIndicator(),
+                        ),
+                      )
+                    else if (_albumTracks.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8.0),
+                        child: Text('No tracks found in this album.'),
+                      )
+                    else
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _albumTracks.length,
+                        separatorBuilder: (context, index) =>
+                            const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final track = _albumTracks[index];
+                          final trackNumber =
+                              track['IndexNumber'] ?? (index + 1);
+                          final trackTitle =
+                              track['Name'] as String? ?? 'Track ${index + 1}';
+                          final trackArtists =
+                              (track['Artists'] as List?)?.join(', ') ??
+                              (track['AlbumArtist'] as String?) ??
+                              '';
+                          final trackDuration = _formatDurationFromTicks(
+                            track['RunTimeTicks'] as num?,
+                          );
+
+                          void playThisTrack() {
+                            final trackItem = Map<String, dynamic>.from(track);
+                            if (trackItem['AlbumId'] == null) {
+                              trackItem['AlbumId'] = widget.itemId;
+                            }
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (context) =>
+                                    MusicPlayerScreen(item: trackItem),
+                              ),
+                            );
+                          }
+
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: SizedBox(
+                              width: 32,
+                              child: Center(
+                                child: Text(
+                                  '$trackNumber',
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              trackTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            subtitle: trackArtists.isNotEmpty
+                                ? Text(
+                                    trackArtists,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(color: Colors.grey),
+                                  )
+                                : null,
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  trackDuration,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: Colors.grey),
+                                ),
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  icon: const Icon(Icons.play_circle_outline),
+                                  iconSize: 28,
+                                  onPressed: playThisTrack,
+                                ),
+                              ],
+                            ),
+                            onTap: playThisTrack,
+                          );
+                        },
+                      ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  if (hasOverview || !isMusicAlbum) ...[
+                    Text(
+                      'Summary',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      hasOverview ? overview : 'No summary available.',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   if (item['Genres'] != null)
                     Wrap(
                       spacing: 8,

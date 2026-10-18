@@ -49,13 +49,15 @@ class HomeScreen extends StatelessWidget {
         });
 
         // Determine ordered & visible section IDs
-        final orderedIds = (homepageProvider.sectionOrder.isNotEmpty
-                ? homepageProvider.sectionOrder
-                : availableIds)
-            .where((id) {
-          return availableIds.contains(id) &&
-              homepageProvider.isSectionVisible(id);
-        }).toList();
+        final orderedIds =
+            (homepageProvider.sectionOrder.isNotEmpty
+                    ? homepageProvider.sectionOrder
+                    : availableIds)
+                .where((id) {
+                  return availableIds.contains(id) &&
+                      homepageProvider.isSectionVisible(id);
+                })
+                .toList();
 
         if (orderedIds.isEmpty) {
           return Center(
@@ -85,8 +87,9 @@ class HomeScreen extends StatelessWidget {
             if (sectionId == 'resume') {
               return _ResumeSection(auth: auth, repository: repository);
             } else {
-              final matching =
-                  libraries.where((l) => l.id == sectionId).toList();
+              final matching = libraries
+                  .where((l) => l.id == sectionId)
+                  .toList();
               if (matching.isEmpty) return const SizedBox.shrink();
               return _LibrarySection(
                 library: matching.first,
@@ -180,8 +183,10 @@ class _ResumeSection extends StatelessWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (context) =>
-                                ItemDetailsScreen(itemId: item.id),
+                            builder: (context) => ItemDetailsScreen(
+                              itemId: item.id,
+                              initialItem: item.rawJson,
+                            ),
                           ),
                         );
                       },
@@ -281,9 +286,7 @@ class _LibrarySection extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        if (snapshot.hasError ||
-            !snapshot.hasData ||
-            snapshot.data!.isEmpty) {
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
           return const SizedBox.shrink();
         }
 
@@ -339,8 +342,10 @@ class _LibrarySection extends StatelessWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (context) =>
-                                ItemDetailsScreen(itemId: item.id),
+                            builder: (context) => ItemDetailsScreen(
+                              itemId: item.id,
+                              initialItem: item.rawJson,
+                            ),
                           ),
                         );
                       },
