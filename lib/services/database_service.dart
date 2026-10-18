@@ -7,6 +7,7 @@ class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
   DatabaseService._internal();
+  DatabaseService.forTesting();
 
   Database? _database;
 
@@ -166,7 +167,8 @@ class DatabaseService {
       try {
         final rawMap =
             jsonDecode(map['json'] as String) as Map<String, dynamic>;
-        final userData = (rawMap['UserData'] as Map<String, dynamic>?) ??
+        final userData =
+            (rawMap['UserData'] as Map<String, dynamic>?) ??
             <String, dynamic>{};
         final newUserData = Map<String, dynamic>.from(userData);
         if (isFavorite != null) newUserData['IsFavorite'] = isFavorite;

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -236,7 +237,10 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
   Future<void> _saveProgress(Locator locator) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('comic_locator_${widget.itemId}', locator.json);
+      await prefs.setString(
+        'comic_locator_${widget.itemId}',
+        jsonEncode(locator.toJson()),
+      );
 
       if (_serverUrl != null && _token != null && _userId != null) {
         final progress = locator.locations?.totalProgression ?? 0.0;

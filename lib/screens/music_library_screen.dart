@@ -71,8 +71,8 @@ class MusicLibraryScreen extends StatelessWidget {
                     child: Text(
                       'Select Genre',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const Divider(height: 1),
@@ -80,7 +80,7 @@ class MusicLibraryScreen extends StatelessWidget {
                     child: ListView.separated(
                       controller: scrollController,
                       itemCount: genres.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final genre = genres[index] as Map<String, dynamic>;
                         final genreName =
@@ -118,9 +118,7 @@ class MusicLibraryScreen extends StatelessWidget {
     final title = library.name ?? 'Music Library';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-      ),
+      appBar: AppBar(title: Text(title)),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         children: [

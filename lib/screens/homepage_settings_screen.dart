@@ -44,8 +44,10 @@ class _HomepageSettingsScreenState extends State<HomepageSettingsScreen> {
         });
 
         final availableIds = ['resume', ...views.map((l) => l.id)];
-        Provider.of<HomepageProvider>(context, listen: false)
-            .syncAvailableSections(availableIds);
+        Provider.of<HomepageProvider>(
+          context,
+          listen: false,
+        ).syncAvailableSections(availableIds);
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
@@ -93,86 +95,88 @@ class _HomepageSettingsScreenState extends State<HomepageSettingsScreen> {
     final homepageProvider = Provider.of<HomepageProvider>(context);
 
     final availableIds = ['resume', ..._libraries.map((l) => l.id)];
-    final orderedIds = (homepageProvider.sectionOrder.isNotEmpty
-            ? homepageProvider.sectionOrder
-            : availableIds)
-        .where((id) => availableIds.contains(id))
-        .toList();
+    final orderedIds =
+        (homepageProvider.sectionOrder.isNotEmpty
+                ? homepageProvider.sectionOrder
+                : availableIds)
+            .where((id) => availableIds.contains(id))
+            .toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Customize Homepage'),
-      ),
+      appBar: AppBar(title: const Text('Customize Homepage')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : orderedIds.isEmpty
-              ? const Center(
-                  child: Text('No library sections available to customize.'),
-                )
-              : Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        'Drag to reorder homepage rows. Toggle the switch to hide or show sections.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                      ),
+          ? const Center(
+              child: Text('No library sections available to customize.'),
+            )
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Drag to reorder homepage rows. Toggle the switch to hide or show sections.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
                     ),
-                    const Divider(height: 1),
-                    Expanded(
-                      child: ReorderableListView.builder(
-                        itemCount: orderedIds.length,
-                        onReorder: (oldIndex, newIndex) {
-                          homepageProvider.reorderSections(oldIndex, newIndex);
-                        },
-                        itemBuilder: (context, index) {
-                          final sectionId = orderedIds[index];
-                          final isVisible =
-                              homepageProvider.isSectionVisible(sectionId);
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ReorderableListView.builder(
+                    itemCount: orderedIds.length,
+                    // ignore: deprecated_member_use
+                    onReorder: (oldIndex, newIndex) {
+                      homepageProvider.reorderSections(oldIndex, newIndex);
+                    },
+                    itemBuilder: (context, index) {
+                      final sectionId = orderedIds[index];
+                      final isVisible = homepageProvider.isSectionVisible(
+                        sectionId,
+                      );
 
-                          return ListTile(
-                            key: ValueKey(sectionId),
-                            leading: Icon(
-                              _getSectionIcon(sectionId),
-                              color: isVisible
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Colors.grey,
+                      return ListTile(
+                        key: ValueKey(sectionId),
+                        leading: Icon(
+                          _getSectionIcon(sectionId),
+                          color: isVisible
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.grey,
+                        ),
+                        title: Text(
+                          _getSectionTitle(sectionId),
+                          style: TextStyle(
+                            color: isVisible ? null : Colors.grey,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Switch(
+                              value: isVisible,
+                              onChanged: (_) {
+                                homepageProvider.toggleSectionVisibility(
+                                  sectionId,
+                                );
+                              },
                             ),
-                            title: Text(
-                              _getSectionTitle(sectionId),
-                              style: TextStyle(
-                                color: isVisible ? null : Colors.grey,
-                                fontWeight: FontWeight.w500,
+                            const SizedBox(width: 8),
+                            ReorderableDragStartListener(
+                              index: index,
+                              child: const Icon(
+                                Icons.drag_handle,
+                                color: Colors.grey,
                               ),
                             ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Switch(
-                                  value: isVisible,
-                                  onChanged: (_) {
-                                    homepageProvider
-                                        .toggleSectionVisibility(sectionId);
-                                  },
-                                ),
-                                const SizedBox(width: 8),
-                                ReorderableDragStartListener(
-                                  index: index,
-                                  child: const Icon(
-                                    Icons.drag_handle,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
+              ],
+            ),
     );
   }
 }

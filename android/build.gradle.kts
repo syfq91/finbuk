@@ -18,6 +18,11 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        compilerOptions {
+            freeCompilerArgs.addAll("-opt-in=kotlin.time.ExperimentalTime", "-opt-in=kotlin.RequiresOptIn")
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

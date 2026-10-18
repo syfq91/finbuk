@@ -113,7 +113,7 @@ void main() {
     test('download queries return valid collections', () {
       expect(manager.getActiveDownloads(), isA<List<DownloadTask>>());
       expect(manager.getQueuedDownloads(), isA<List<DownloadTask>>());
-      expect(manager.getTotalDownloadCount(), isNonNegative);
+      expect(manager.getTotalPendingDownloads(), isNonNegative);
     });
   });
 }

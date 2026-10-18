@@ -50,7 +50,7 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
   Future<void> _initPlayer() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     _serverUrl = auth.serverUrl;
-    _userId = auth.currentUser?.id;
+    _userId = auth.userId;
     _token = auth.token;
 
     final runTimeTicks = widget.item['RunTimeTicks'] as num?;
@@ -202,8 +202,9 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
     final fallbackDuration = runTimeTicks != null && runTimeTicks > 0
         ? Duration(microseconds: (runTimeTicks / 10).round())
         : Duration.zero;
-    final totalDuration =
-        duration > Duration.zero ? duration : fallbackDuration;
+    final totalDuration = duration > Duration.zero
+        ? duration
+        : fallbackDuration;
     final remainingDuration = totalDuration > position
         ? totalDuration - position
         : Duration.zero;

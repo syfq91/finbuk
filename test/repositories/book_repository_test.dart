@@ -6,7 +6,7 @@ import 'package:finbuk/services/jellyfin_service.dart';
 import 'package:finbuk/services/database_service.dart';
 
 class FakeDatabaseService extends DatabaseService {
-  FakeDatabaseService() : super._internal();
+  FakeDatabaseService() : super.forTesting();
 
   final Map<String, List<Item>> _categoryStore = <String, List<Item>>{};
   final Map<String, Map<String, dynamic>> _itemUserData =
@@ -115,107 +115,119 @@ void main() {
       SharedPreferences.setMockInitialValues(<String, Object>{});
       fakeDb = FakeDatabaseService();
       fakeApi = FakeJellyfinService();
-      repository = BookRepository(
-        apiService: fakeApi,
-        dbService: fakeDb,
-      );
+      repository = BookRepository(apiService: fakeApi, dbService: fakeDb);
     });
 
-    test('getUserViews fetches from API and caches to DB when cache is empty', () async {
-      fakeApi.userViewsResponse = <Map<String, dynamic>>[
-        <String, dynamic>{
-          'Id': 'lib-1',
-          'Name': 'Comics Library',
-          'Type': 'CollectionFolder',
-        },
-      ];
-
-      final items = await repository.getUserViews(
-        'http://localhost:8096',
-        'user-1',
-        'token-1',
-      );
-
-      expect(items.length, equals(1));
-      expect(items.first.id, equals('lib-1'));
-      expect(items.first.name, equals('Comics Library'));
-
-      // Check that it was saved to DB cache
-      final cached = await fakeDb.getItemsByCategory('user_views');
-      expect(cached.length, equals(1));
-      expect(cached.first.id, equals('lib-1'));
-    });
-
-    test('getUserViews returns cached items immediately without waiting for API', () async {
-      final cachedItem = Item.fromJson(<String, dynamic>{
-        'Id': 'cached-1',
-        'Name': 'Cached Library',
-        'Type': 'CollectionFolder',
-      });
-      await fakeDb.saveItems(<Item>[cachedItem], 'user_views');
-
-      final items = await repository.getUserViews(
-        'http://localhost:8096',
-        'user-1',
-        'token-1',
-      );
-
-      expect(items.length, equals(1));
-      expect(items.first.id, equals('cached-1'));
-    });
-
-    test('getItems caches first page and calculates TotalRecordCount correctly', () async {
-      fakeApi.itemsResponse = <String, dynamic>{
-        'Items': <Map<String, dynamic>>[
+    test(
+      'getUserViews fetches from API and caches to DB when cache is empty',
+      () async {
+        fakeApi.userViewsResponse = <Map<String, dynamic>>[
           <String, dynamic>{
-            'Id': 'book-1',
-            'Name': 'Batman Year One',
-            'Type': 'Book',
+            'Id': 'lib-1',
+            'Name': 'Comics Library',
+            'Type': 'CollectionFolder',
           },
-        ],
-        'TotalRecordCount': 42,
-      };
+        ];
 
-      final result = await repository.getItems(
-        'http://localhost:8096',
-        'user-1',
-        'token-1',
-        startIndex: 0,
-        limit: 10,
-      );
+        final items = await repository.getUserViews(
+          'http://localhost:8096',
+          'user-1',
+          'token-1',
+        );
 
-      expect(result['TotalRecordCount'], equals(42));
-      final items = result['Items'] as List<dynamic>;
-      expect(items.length, equals(1));
-      expect(items.first['Id'], equals('book-1'));
-    });
+        expect(items.length, equals(1));
+        expect(items.first.id, equals('lib-1'));
+        expect(items.first.name, equals('Comics Library'));
 
-    test('toggleFavorite delegates to both JellyfinService and DatabaseService', () async {
-      await repository.toggleFavorite(
-        'http://localhost:8096',
-        'user-1',
-        'item-99',
-        'token-1',
-        true,
-      );
+        // Check that it was saved to DB cache
+        final cached = await fakeDb.getItemsByCategory('user_views');
+        expect(cached.length, equals(1));
+        expect(cached.first.id, equals('lib-1'));
+      },
+    );
 
-      expect(fakeApi.toggleFavoriteCalled, isTrue);
-      expect(fakeApi.lastFavoriteValue, isTrue);
-      expect(fakeDb._itemUserData['item-99']?['isFavorite'], isTrue);
-    });
+    test(
+      'getUserViews returns cached items immediately without waiting for API',
+      () async {
+        final cachedItem = Item.fromJson(<String, dynamic>{
+          'Id': 'cached-1',
+          'Name': 'Cached Library',
+          'Type': 'CollectionFolder',
+        });
+        await fakeDb.saveItems(<Item>[cachedItem], 'user_views');
 
-    test('togglePlayed delegates to both JellyfinService and DatabaseService', () async {
-      await repository.togglePlayed(
-        'http://localhost:8096',
-        'user-1',
-        'item-88',
-        'token-1',
-        true,
-      );
+        final items = await repository.getUserViews(
+          'http://localhost:8096',
+          'user-1',
+          'token-1',
+        );
 
-      expect(fakeApi.togglePlayedCalled, isTrue);
-      expect(fakeApi.lastPlayedValue, isTrue);
-      expect(fakeDb._itemUserData['item-88']?['played'], isTrue);
-    });
+        expect(items.length, equals(1));
+        expect(items.first.id, equals('cached-1'));
+      },
+    );
+
+    test(
+      'getItems caches first page and calculates TotalRecordCount correctly',
+      () async {
+        fakeApi.itemsResponse = <String, dynamic>{
+          'Items': <Map<String, dynamic>>[
+            <String, dynamic>{
+              'Id': 'book-1',
+              'Name': 'Batman Year One',
+              'Type': 'Book',
+            },
+          ],
+          'TotalRecordCount': 42,
+        };
+
+        final result = await repository.getItems(
+          'http://localhost:8096',
+          'user-1',
+          'token-1',
+          startIndex: 0,
+          limit: 10,
+        );
+
+        expect(result['TotalRecordCount'], equals(42));
+        final items = result['Items'] as List<dynamic>;
+        expect(items.length, equals(1));
+        expect(items.first['Id'], equals('book-1'));
+      },
+    );
+
+    test(
+      'toggleFavorite delegates to both JellyfinService and DatabaseService',
+      () async {
+        await repository.toggleFavorite(
+          'http://localhost:8096',
+          'user-1',
+          'item-99',
+          'token-1',
+          true,
+        );
+
+        expect(fakeApi.toggleFavoriteCalled, isTrue);
+        expect(fakeApi.lastFavoriteValue, isTrue);
+        expect(fakeDb._itemUserData['item-99']?['isFavorite'], isTrue);
+      },
+    );
+
+    test(
+      'togglePlayed delegates to both JellyfinService and DatabaseService',
+      () async {
+        await repository.togglePlayed(
+          'http://localhost:8096',
+          'user-1',
+          'item-88',
+          'token-1',
+          true,
+        );
+
+        expect(fakeApi.togglePlayedCalled, isTrue);
+        expect(fakeApi.lastPlayedValue, isTrue);
+        expect(fakeDb._itemUserData['item-88']?['played'], isTrue);
+      },
+    );
   });
 }

@@ -128,7 +128,8 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
         final map = jsonDecode(raw) as Map<String, dynamic>;
         final rawFontSize = (map['fontSize'] as num?)?.toDouble() ?? 1.0;
         final fontSize = rawFontSize > 10.0 ? rawFontSize / 100.0 : rawFontSize;
-        final scroll = (map['scroll'] ?? map['verticalScroll']) as bool? ?? false;
+        final scroll =
+            (map['scroll'] ?? map['verticalScroll']) as bool? ?? false;
         setState(() {
           _prefs = EPUBPreferences(
             fontFamily: map['fontFamily'] as String? ?? 'Georgia',
@@ -299,7 +300,10 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
     _currentProgress = locator.locations?.totalProgression ?? _currentProgress;
     try {
       final sp = await SharedPreferences.getInstance();
-      await sp.setString('epub_locator_${widget.itemId}', locator.json);
+      await sp.setString(
+        'epub_locator_${widget.itemId}',
+        jsonEncode(locator.toJson()),
+      );
 
       if (_serverUrl != null && _token != null && _userId != null) {
         final prog = locator.locations?.totalProgression ?? 0.0;
