@@ -1,17 +1,25 @@
 import 'package:dio/dio.dart';
 
 class JellyfinService {
-  final Dio _dio = Dio();
+  final Dio _dio;
+  static String? defaultDeviceId;
+
+  JellyfinService({Dio? dio}) : _dio = dio ?? Dio();
 
   static String _normalizeUrl(String url) {
     return url.endsWith('/') ? url.substring(0, url.length - 1) : url;
   }
 
-  static Map<String, String> _authHeaders(String token, {bool json = false}) {
+  static Map<String, String> _authHeaders(
+    String token, {
+    bool json = false,
+    String? deviceId,
+  }) {
+    final devId = deviceId ?? defaultDeviceId ?? 'finbuk-android-device';
     final headers = <String, String>{
       'X-Emby-Token': token,
       'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
+          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="$devId", Version="1.0.0"',
     };
     if (json) headers['Content-Type'] = 'application/json';
     return headers;
@@ -20,13 +28,15 @@ class JellyfinService {
   Future<Map<String, dynamic>> authenticate(
     String url,
     String username,
-    String password,
-  ) async {
+    String password, {
+    String? deviceId,
+  }) async {
     final baseUrl = _normalizeUrl(url);
+    final devId = deviceId ?? defaultDeviceId ?? 'finbuk-android-device';
 
     final headers = {
       'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="finbuk-android-device", Version="1.0.0"',
+          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="$devId", Version="1.0.0"',
       'Content-Type': 'application/json',
     };
 

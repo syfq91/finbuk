@@ -13,8 +13,8 @@
 | **Phase 1** | Compilation Blockers & Navigation | 🟢 Complete | 7 | 7 | 0 | 0 |
 | **Phase 2** | Media Playback & Offline Downloads | 🟢 Complete | 4 | 4 | 0 | 0 |
 | **Phase 3** | Architecture, Concurrency & Performance | 🟢 Complete | 5 | 5 | 0 | 0 |
-| **Phase 4** | Policy, Database & Test Coverage | ⚪ Pending | 4 | 0 | 0 | 4 |
-| **Total** | | | **20** | **16** | **0** | **4** |
+| **Phase 4** | Policy, Database & Test Coverage | 🟢 Complete | 4 | 4 | 0 | 0 |
+| **Total** | | | **20** | **20** | **0** | **0** |
 
 ---
 
@@ -145,24 +145,24 @@ Resolve architecture layer skips, DNS polling overhead, and lifecycle safety.
 
 Align with Play Store policies, secure multi-device sessions, and establish test coverage.
 
-- [ ] **Task 4.1: Clean Up Dangerous Permissions in [`AndroidManifest.xml`](android/app/src/main/AndroidManifest.xml)**
+- [x] **Task 4.1: Clean Up Dangerous Permissions in [`AndroidManifest.xml`](android/app/src/main/AndroidManifest.xml)**
   - Path: `android/app/src/main/AndroidManifest.xml`
   - Requirements:
     - Remove `MANAGE_EXTERNAL_STORAGE` and `WRITE_EXTERNAL_STORAGE`.
     - Keep `INTERNET` and `READ_EXTERNAL_STORAGE` (if needed for local file import).
 
-- [ ] **Task 4.2: Ensure Deterministic Item Ordering in [`DatabaseService`](lib/services/database_service.dart)**
+- [x] **Task 4.2: Ensure Deterministic Item Ordering in [`DatabaseService`](lib/services/database_service.dart)**
   - Path: `lib/services/database_service.dart`
   - Requirements:
     - Add `orderBy: 'updatedAt DESC'` to `getItemById(id)`.
 
-- [ ] **Task 4.3: Implement Dynamic Device ID**
+- [x] **Task 4.3: Implement Dynamic Device ID**
   - Paths: `lib/providers/auth_provider.dart`, `lib/services/jellyfin_service.dart`
   - Requirements:
     - Generate a unique persistent UUID stored in `FlutterSecureStorage`.
     - Use this ID in `X-Emby-Authorization` `DeviceId` instead of the hardcoded `"finbuk-android-device"`.
 
-- [ ] **Task 4.4: Add Unit Tests for Repositories and Services**
+- [x] **Task 4.4: Add Unit Tests for Repositories and Services**
   - Paths: `test/repositories/book_repository_test.dart`, `test/services/jellyfin_service_test.dart`, `test/services/download_manager_test.dart`
   - Requirements:
     - Mock Dio and DatabaseService to test caching patterns, error handling, and download queuing.

@@ -1,26 +1,42 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/jellyfin_service.dart';
 
 class AuthProvider with ChangeNotifier {
-  final JellyfinService _service = JellyfinService();
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  final JellyfinService _service;
+  final FlutterSecureStorage _secureStorage;
 
   String? _serverUrl;
   String? _token;
   String? _userId;
   String? _username;
+  String? _deviceId;
   bool _isLoading = false;
 
   String? get serverUrl => _serverUrl;
   String? get token => _token;
   String? get userId => _userId;
   String? get username => _username;
+  String? get deviceId => _deviceId;
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _token != null;
 
-  AuthProvider() {
+  AuthProvider({
+    JellyfinService? service,
+    FlutterSecureStorage? secureStorage,
+  })  : _service = service ?? JellyfinService(),
+        _secureStorage = secureStorage ?? const FlutterSecureStorage() {
     _loadFromSecureStorage();
+  }
+
+  static String _generateUuidV4() {
+    final random = Random.secure();
+    final values = List<int>.generate(16, (i) => random.nextInt(256));
+    values[6] = (values[6] & 0x0f) | 0x40; // Version 4
+    values[8] = (values[8] & 0x3f) | 0x80; // Variant 10xx
+    final hex = values.map((b) => b.toRadixString(16).padLeft(2, '0')).toList();
+    return '${hex.sublist(0, 4).join()}-${hex.sublist(4, 6).join()}-${hex.sublist(6, 8).join()}-${hex.sublist(8, 10).join()}-${hex.sublist(10, 16).join()}';
   }
 
   Future<void> _loadFromSecureStorage() async {
@@ -28,6 +44,12 @@ class AuthProvider with ChangeNotifier {
     _token = await _secureStorage.read(key: 'token');
     _userId = await _secureStorage.read(key: 'userId');
     _username = await _secureStorage.read(key: 'username');
+    _deviceId = await _secureStorage.read(key: 'deviceId');
+    if (_deviceId == null || _deviceId!.isEmpty) {
+      _deviceId = _generateUuidV4();
+      await _secureStorage.write(key: 'deviceId', value: _deviceId!);
+    }
+    JellyfinService.defaultDeviceId = _deviceId;
     notifyListeners();
   }
 
@@ -36,6 +58,15 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      if (_deviceId == null || _deviceId!.isEmpty) {
+        _deviceId = await _secureStorage.read(key: 'deviceId');
+        if (_deviceId == null || _deviceId!.isEmpty) {
+          _deviceId = _generateUuidV4();
+          await _secureStorage.write(key: 'deviceId', value: _deviceId!);
+        }
+        JellyfinService.defaultDeviceId = _deviceId;
+      }
+
       List<String> urlsToTry = [];
       String cleanUrl = url.trim();
       if (cleanUrl.endsWith('/')) {
@@ -53,7 +84,12 @@ class AuthProvider with ChangeNotifier {
       Object? lastError;
       for (String tryUrl in urlsToTry) {
         try {
-          final data = await _service.authenticate(tryUrl, username, password);
+          final data = await _service.authenticate(
+            tryUrl,
+            username,
+            password,
+            deviceId: _deviceId,
+          );
 
           final token = data['AccessToken'] as String?;
           final user = data['User'] is Map<String, dynamic>

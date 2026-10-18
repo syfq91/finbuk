@@ -5,8 +5,14 @@ import '../services/database_service.dart';
 import '../models/item.dart';
 
 class BookRepository {
-  final JellyfinService _apiService = JellyfinService();
-  final DatabaseService _dbService = DatabaseService();
+  final JellyfinService _apiService;
+  final DatabaseService _dbService;
+
+  BookRepository({
+    JellyfinService? apiService,
+    DatabaseService? dbService,
+  })  : _apiService = apiService ?? JellyfinService(),
+        _dbService = dbService ?? DatabaseService();
 
   Future<List<Item>> getUserViews(
     String url,
