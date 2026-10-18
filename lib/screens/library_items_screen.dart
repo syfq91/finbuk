@@ -10,12 +10,16 @@ class LibraryItemsScreen extends StatefulWidget {
   final String? libraryId;
   final String libraryName;
   final bool isFavoriteOnly;
+  final String? includeItemTypes;
+  final String? genreIds;
 
   const LibraryItemsScreen({
     super.key,
     this.libraryId,
     required this.libraryName,
     this.isFavoriteOnly = false,
+    this.includeItemTypes,
+    this.genreIds,
   });
 
   @override
@@ -100,10 +104,14 @@ class _LibraryItemsScreenState extends State<LibraryItemsScreen> {
         userId,
         token,
         parentId: widget.isFavoriteOnly ? null : widget.libraryId,
-        recursive: widget.isFavoriteOnly ? true : false,
+        recursive: widget.isFavoriteOnly || widget.includeItemTypes != null
+            ? true
+            : false,
         limit: _pageSize,
         startIndex: startIndex,
         isFavorite: widget.isFavoriteOnly,
+        includeItemTypes: widget.includeItemTypes,
+        genreIds: widget.genreIds,
       );
       final newItems = (result['Items'] as List<dynamic>)
           .whereType<Map<String, dynamic>>()

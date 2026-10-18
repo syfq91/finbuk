@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:finbuk/main.dart';
 import 'package:finbuk/providers/auth_provider.dart';
 import 'package:finbuk/providers/theme_provider.dart';
+import 'package:finbuk/providers/music_player_provider.dart';
+import 'package:finbuk/providers/homepage_provider.dart';
 
 void main() {
   group('FinbukApp Smoke Tests', () {
@@ -15,6 +17,8 @@ void main() {
           providers: [
             ChangeNotifierProvider(create: (_) => AuthProvider()),
             ChangeNotifierProvider(create: (_) => ThemeProvider()),
+            ChangeNotifierProvider(create: (_) => MusicPlayerProvider()),
+            ChangeNotifierProvider(create: (_) => HomepageProvider()),
           ],
           child: const FinbukApp(),
         ),
@@ -33,6 +37,8 @@ void main() {
           providers: [
             ChangeNotifierProvider(create: (_) => AuthProvider()),
             ChangeNotifierProvider(create: (_) => ThemeProvider()),
+            ChangeNotifierProvider(create: (_) => MusicPlayerProvider()),
+            ChangeNotifierProvider(create: (_) => HomepageProvider()),
           ],
           child: const FinbukApp(),
         ),
@@ -51,6 +57,8 @@ void main() {
           providers: [
             ChangeNotifierProvider(create: (_) => AuthProvider()),
             ChangeNotifierProvider(create: (_) => ThemeProvider()),
+            ChangeNotifierProvider(create: (_) => MusicPlayerProvider()),
+            ChangeNotifierProvider(create: (_) => HomepageProvider()),
           ],
           child: const FinbukApp(),
         ),

@@ -17,22 +17,23 @@ final ValueNotifier<bool> _isRootRouteNotifier = ValueNotifier<bool>(true);
 class _AppNavigatorObserver extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    _isRootRouteNotifier.value = previousRoute == null;
+    _isRootRouteNotifier.value = previousRoute == null || route.isFirst;
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    _isRootRouteNotifier.value = previousRoute == null;
+    _isRootRouteNotifier.value = previousRoute?.isFirst ?? true;
   }
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    _isRootRouteNotifier.value = previousRoute == null;
+    _isRootRouteNotifier.value = previousRoute?.isFirst ?? true;
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
-    _isRootRouteNotifier.value = newRoute == null;
+    _isRootRouteNotifier.value =
+        newRoute?.isFirst ?? (oldRoute?.isFirst ?? true);
   }
 }
 

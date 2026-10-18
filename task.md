@@ -10,11 +10,11 @@
 
 | Phase | Description | Status | Total | Done | In Progress | Pending |
 |---|---|:---:|:---:|:---:|:---:|:---:|
-| **Phase 1** | Compilation Blockers & Navigation | 🟡 Ready | 7 | 0 | 0 | 7 |
+| **Phase 1** | Compilation Blockers & Navigation | 🟢 Complete | 7 | 7 | 0 | 0 |
 | **Phase 2** | Media Playback & Offline Downloads | ⚪ Pending | 4 | 0 | 0 | 4 |
 | **Phase 3** | Architecture, Concurrency & Performance | ⚪ Pending | 5 | 0 | 0 | 5 |
 | **Phase 4** | Policy, Database & Test Coverage | ⚪ Pending | 4 | 0 | 0 | 4 |
-| **Total** | | | **20** | **0** | **0** | **20** |
+| **Total** | | | **20** | **7** | **0** | **13** |
 
 ---
 
@@ -22,7 +22,7 @@
 
 Resolve missing files, navigation state locking, and authentication crashes to bring the app into a clean buildable state.
 
-- [ ] **Task 1.1: Implement [`MusicPlayerProvider`](lib/providers/music_player_provider.dart)**
+- [x] **Task 1.1: Implement [`MusicPlayerProvider`](lib/providers/music_player_provider.dart)**
   - Path: `lib/providers/music_player_provider.dart`
   - Requirements:
     - Wrap `media_kit` `Player` with `ChangeNotifier`.
@@ -30,40 +30,40 @@ Resolve missing files, navigation state locking, and authentication crashes to b
     - Provide methods: `play({required Map<String, dynamic> item, required String serverUrl, required String token, String? localFilePath})`, `seek(Duration position)`, `togglePlayPause()`, `setFullPlayerOpen(bool open)`.
     - Handle background playback and notification controls if applicable.
 
-- [ ] **Task 1.2: Implement [`HomepageProvider`](lib/providers/homepage_provider.dart)**
+- [x] **Task 1.2: Implement [`HomepageProvider`](lib/providers/homepage_provider.dart)**
   - Path: `lib/providers/homepage_provider.dart`
   - Requirements:
     - Manage homepage section ordering (`sectionOrder: List<String>`) and visibility (`hiddenSections: Set<String>`).
     - Persist settings to `SharedPreferences` keys (`homepage_section_order`, `homepage_hidden_sections`).
     - Provide methods: `syncAvailableSections(List<String> availableIds)`, `isSectionVisible(String id)`, `toggleSectionVisibility(String id)`, `reorderSections(int oldIndex, int newIndex)`.
 
-- [ ] **Task 1.3: Implement [`FloatingMiniPlayer`](lib/widgets/floating_mini_player.dart)**
+- [x] **Task 1.3: Implement [`FloatingMiniPlayer`](lib/widgets/floating_mini_player.dart)**
   - Path: `lib/widgets/floating_mini_player.dart`
   - Requirements:
     - Consume `MusicPlayerProvider`. If `currentItem == null` or `isFullPlayerOpen == true`, return `SizedBox.shrink()`.
     - Render a compact bottom card displaying album thumbnail, track title, artist name, and quick play/pause button.
     - On tap, push [`MusicPlayerScreen`](lib/screens/music_player_screen.dart) using optional `navigatorKey` or current `Navigator`.
 
-- [ ] **Task 1.4: Implement [`HomepageSettingsScreen`](lib/screens/homepage_settings_screen.dart)**
+- [x] **Task 1.4: Implement [`HomepageSettingsScreen`](lib/screens/homepage_settings_screen.dart)**
   - Path: `lib/screens/homepage_settings_screen.dart`
   - Requirements:
     - Scaffold with AppBar titled "Customize Homepage".
     - `ReorderableListView` using drag handles to reorder library sections.
     - Switch controls per row to toggle visibility via `HomepageProvider`.
 
-- [ ] **Task 1.5: Implement [`MusicLibraryScreen`](lib/screens/music_library_screen.dart)**
+- [x] **Task 1.5: Implement [`MusicLibraryScreen`](lib/screens/music_library_screen.dart)**
   - Path: `lib/screens/music_library_screen.dart`
   - Requirements:
     - Display sub-categories for Jellyfin Music libraries (Artists, Albums, Songs, Genres).
     - Route sub-categories into [`LibraryItemsScreen`](lib/screens/library_items_screen.dart) with appropriate item types (`MusicArtist`, `MusicAlbum`, `Audio`).
 
-- [ ] **Task 1.6: Fix Navigation Root Lock in [`_AppNavigatorObserver`](lib/main.dart)**
+- [x] **Task 1.6: Fix Navigation Root Lock in [`_AppNavigatorObserver`](lib/main.dart)**
   - Path: `lib/main.dart`
   - Requirements:
     - Replace `previousRoute == null` on `didPop` with `previousRoute?.isFirst == true`.
     - Correct `didPush` and `didReplace` to accurately reflect when the top route is the root route.
 
-- [ ] **Task 1.7: Guard Unsafe Null Assertions in [`AuthProvider.login`](lib/providers/auth_provider.dart)**
+- [x] **Task 1.7: Guard Unsafe Null Assertions in [`AuthProvider.login`](lib/providers/auth_provider.dart)**
   - Path: `lib/providers/auth_provider.dart`
   - Requirements:
     - Check that `token != null && userId != null` before writing to `_secureStorage`.

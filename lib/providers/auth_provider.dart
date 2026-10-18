@@ -55,14 +55,23 @@ class AuthProvider with ChangeNotifier {
         try {
           final data = await _service.authenticate(tryUrl, username, password);
 
+          final token = data['AccessToken'] as String?;
+          final user = data['User'] is Map<String, dynamic>
+              ? data['User'] as Map<String, dynamic>
+              : null;
+          final userId = user?['Id'] as String?;
+          final name = user?['Name'] as String?;
+
+          if (token == null || token.isEmpty || userId == null || userId.isEmpty) {
+            throw Exception(
+              'Authentication response is missing an access token or user ID.',
+            );
+          }
+
           _serverUrl = tryUrl;
-          _token = data['AccessToken'] as String?;
-          _userId = data['User'] is Map<String, dynamic>
-              ? (data['User'] as Map<String, dynamic>)['Id'] as String?
-              : null;
-          _username = data['User'] is Map<String, dynamic>
-              ? (data['User'] as Map<String, dynamic>)['Name'] as String?
-              : null;
+          _token = token;
+          _userId = userId;
+          _username = (name != null && name.isNotEmpty) ? name : username;
 
           await _secureStorage.write(key: 'serverUrl', value: _serverUrl!);
           await _secureStorage.write(key: 'token', value: _token!);
