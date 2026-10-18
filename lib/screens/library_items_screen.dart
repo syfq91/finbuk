@@ -123,7 +123,8 @@ class _LibraryItemsScreenState extends State<LibraryItemsScreen> {
         _items.addAll(newItems);
       }
       _totalCount = totalCount;
-      _hasMore = _items.length < _totalCount;
+      _hasMore = newItems.isNotEmpty &&
+          (_items.length < _totalCount || newItems.length == _pageSize);
     } catch (e) {
       debugPrint('Error loading items: $e');
     } finally {

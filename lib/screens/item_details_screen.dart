@@ -10,7 +10,6 @@ import '../providers/auth_provider.dart';
 import '../repositories/book_repository.dart';
 import '../services/download_manager.dart';
 import '../services/file_service.dart';
-import '../services/jellyfin_service.dart';
 import 'comic_reader_screen.dart';
 import 'epub_reader_screen.dart';
 import 'video_player_screen.dart';
@@ -110,12 +109,14 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
               forceRefresh: false, // Don't force refresh, try to get from cache
             );
 
-            setState(() {
-              _displayItem = cachedItem;
-              _isLoading = false;
-              _isFetchingDetails = false;
-            });
-            _updateItemData(cachedItem);
+            if (mounted) {
+              setState(() {
+                _displayItem = cachedItem;
+                _isLoading = false;
+                _isFetchingDetails = false;
+              });
+              _updateItemData(cachedItem);
+            }
           } else {
             throw Exception(
               'Authentication credentials not available for cache fetch',
@@ -123,10 +124,12 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
           }
         } catch (innerError) {
           // If cache also fails, show error state
-          setState(() {
-            _isLoading = false;
-            _isFetchingDetails = false;
-          });
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _isFetchingDetails = false;
+            });
+          }
         }
       }
     }
@@ -326,7 +329,6 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
   Future<void> _toggleFavorite(
     BuildContext context,
     AuthProvider auth,
-    JellyfinService service,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
     final serverUrl = auth.serverUrl;
@@ -337,7 +339,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
     final newState = !(_isFavorite ?? false);
     setState(() => _isFavorite = newState);
     try {
-      await service.toggleFavorite(
+      await _repository.toggleFavorite(
         serverUrl,
         userId,
         widget.itemId,
@@ -345,8 +347,8 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
         newState,
       );
     } catch (e) {
-      setState(() => _isFavorite = !newState);
       if (mounted) {
+        setState(() => _isFavorite = !newState);
         messenger.showSnackBar(
           const SnackBar(content: Text('Failed to update favorite status')),
         );
@@ -357,7 +359,6 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
   Future<void> _togglePlayed(
     BuildContext context,
     AuthProvider auth,
-    JellyfinService service,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
     final serverUrl = auth.serverUrl;
@@ -368,7 +369,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
     final newState = !(_isPlayed ?? false);
     setState(() => _isPlayed = newState);
     try {
-      await service.togglePlayed(
+      await _repository.togglePlayed(
         serverUrl,
         userId,
         widget.itemId,
@@ -376,8 +377,8 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
         newState,
       );
     } catch (e) {
-      setState(() => _isPlayed = !newState);
       if (mounted) {
+        setState(() => _isPlayed = !newState);
         messenger.showSnackBar(
           const SnackBar(content: Text('Failed to update read status')),
         );
@@ -605,7 +606,6 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
     final auth = Provider.of<AuthProvider>(context);
     final serverUrl = auth.serverUrl;
     final token = auth.token;
-    final service = JellyfinService();
 
     if (_isLoading && _displayItem == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -782,8 +782,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                                 : isComic || isEpub
                                 ? 'Mark as Read'
                                 : 'Mark as Played',
-                            onPressed: () =>
-                                _togglePlayed(context, auth, service),
+                            onPressed: () => _togglePlayed(context, auth),
                           ),
                           const SizedBox(width: 8),
                           _ActionButton(
@@ -792,8 +791,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                                 : Icons.favorite_border,
                             color: _isFavorite == true ? Colors.red : null,
                             tooltip: 'Favorite',
-                            onPressed: () =>
-                                _toggleFavorite(context, auth, service),
+                            onPressed: () => _toggleFavorite(context, auth),
                           ),
                           const SizedBox(width: 8),
 

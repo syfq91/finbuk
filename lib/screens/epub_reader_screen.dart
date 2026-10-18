@@ -126,7 +126,7 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
     try {
       final sp = await SharedPreferences.getInstance();
       final raw = sp.getString(_prefsKey);
-      if (raw != null) {
+      if (raw != null && mounted) {
         final map = jsonDecode(raw) as Map<String, dynamic>;
         setState(() {
           _prefs = EPUBPreferences(
@@ -177,10 +177,12 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
 
   Future<void> _openPublication() async {
     if (widget.filePath == null) {
-      setState(() {
-        _error = 'No file path provided';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'No file path provided';
+          _isLoading = false;
+        });
+      }
       return;
     }
 

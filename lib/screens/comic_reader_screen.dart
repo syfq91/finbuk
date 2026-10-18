@@ -108,10 +108,12 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
 
   Future<void> _openPublication() async {
     if (widget.filePath == null) {
-      setState(() {
-        _error = 'No file path provided';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'No file path provided';
+          _isLoading = false;
+        });
+      }
       return;
     }
 

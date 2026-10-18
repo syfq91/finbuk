@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
@@ -17,6 +18,9 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  bool _isOffline = false;
+  bool _isCheckingConnection = false;
+  Timer? _connectivityTimer;
 
   final List<Widget> _screens = [
     const HomeScreen(),
@@ -25,6 +29,61 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   final List<String> _titles = ['Home', 'Library', 'Downloads'];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkConnectionStatus();
+    });
+    _connectivityTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _checkConnectionStatus(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _connectivityTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkConnectionStatus() async {
+    if (_isCheckingConnection || !mounted) return;
+    _isCheckingConnection = true;
+    try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final serverUrl = auth.serverUrl;
+      if (serverUrl == null) {
+        if (mounted) setState(() => _isOffline = false);
+        return;
+      }
+      final isConnected = await _checkConnection(serverUrl);
+      if (mounted) {
+        setState(() => _isOffline = !isConnected);
+      }
+    } finally {
+      _isCheckingConnection = false;
+    }
+  }
+
+  Widget? _buildOfflineBanner() {
+    if (!_isOffline) return null;
+    return Container(
+      color: Colors.orange.shade800,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: const Text(
+        'Offline Mode - Using Cached Data',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +145,7 @@ class _MainScreenState extends State<MainScreen> {
         if (constraints.maxWidth > 600) {
           return Scaffold(
             appBar: appBar,
+            bottomSheet: _buildOfflineBanner(),
             body: Row(
               children: [
                 NavigationRail(
@@ -128,6 +188,7 @@ class _MainScreenState extends State<MainScreen> {
         } else {
           return Scaffold(
             appBar: appBar,
+            bottomSheet: _buildOfflineBanner(),
             body: Column(
               children: [
                 Expanded(child: _screens[_selectedIndex]),
@@ -159,30 +220,6 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               ],
             ),
-            bottomSheet: serverUrl != null
-                ? FutureBuilder<bool>(
-                    future: _checkConnection(serverUrl),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData && snapshot.data == false) {
-                        return Container(
-                          color: Colors.orange,
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: const Text(
-                            'Offline Mode - Using Cached Data',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  )
-                : null,
           );
         }
       },

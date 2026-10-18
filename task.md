@@ -12,9 +12,9 @@
 |---|---|:---:|:---:|:---:|:---:|:---:|
 | **Phase 1** | Compilation Blockers & Navigation | 🟢 Complete | 7 | 7 | 0 | 0 |
 | **Phase 2** | Media Playback & Offline Downloads | 🟢 Complete | 4 | 4 | 0 | 0 |
-| **Phase 3** | Architecture, Concurrency & Performance | ⚪ Pending | 5 | 0 | 0 | 5 |
+| **Phase 3** | Architecture, Concurrency & Performance | 🟢 Complete | 5 | 5 | 0 | 0 |
 | **Phase 4** | Policy, Database & Test Coverage | ⚪ Pending | 4 | 0 | 0 | 4 |
-| **Total** | | | **20** | **11** | **0** | **9** |
+| **Total** | | | **20** | **16** | **0** | **4** |
 
 ---
 
@@ -108,33 +108,33 @@ Fix offline media support, file format detection, and media player progress trac
 
 Resolve architecture layer skips, DNS polling overhead, and lifecycle safety.
 
-- [ ] **Task 3.1: Hoist Connection Checking out of [`MainScreen.build`](lib/screens/main_screen.dart)**
+- [x] **Task 3.1: Hoist Connection Checking out of [`MainScreen.build`](lib/screens/main_screen.dart)**
   - Path: `lib/screens/main_screen.dart`
   - Requirements:
     - Remove `FutureBuilder` with `_checkConnection` from `build()`.
     - Check connectivity in `initState()` and on network state changes with debounce.
     - Ensure offline mode banner is displayed consistently on both mobile and tablet (`NavigationRail`) layouts.
 
-- [ ] **Task 3.2: Route Favorite & Played Toggles through [`BookRepository`](lib/repositories/book_repository.dart)**
+- [x] **Task 3.2: Route Favorite & Played Toggles through [`BookRepository`](lib/repositories/book_repository.dart)**
   - Paths: `lib/repositories/book_repository.dart`, `lib/screens/item_details_screen.dart`
   - Requirements:
     - Add `toggleFavorite(...)` and `togglePlayed(...)` methods to `BookRepository`.
     - Update the local SQLite record in `DatabaseService` to ensure immediate UI consistency across tabs.
     - Remove direct `JellyfinService` calls from `ItemDetailsScreen`.
 
-- [ ] **Task 3.3: Fix Pagination Deadlock in [`BookRepository.getItems`](lib/repositories/book_repository.dart)**
+- [x] **Task 3.3: Fix Pagination Deadlock in [`BookRepository.getItems`](lib/repositories/book_repository.dart)**
   - Paths: `lib/repositories/book_repository.dart`, `lib/screens/library_items_screen.dart`
   - Requirements:
     - Avoid returning `TotalRecordCount: cached.length` when returning cached first page items.
     - Persist the real `TotalRecordCount` in cache metadata or allow subsequent pages to query without being blocked by `_hasMore = false`.
 
-- [ ] **Task 3.4: Cancel Stream Subscriptions in Media Players**
+- [x] **Task 3.4: Cancel Stream Subscriptions in Media Players**
   - Paths: `lib/screens/video_player_screen.dart`, `lib/screens/audiobook_player_screen.dart`
   - Requirements:
     - Assign `StreamSubscription` instances for `player.stream.*`.
     - Cancel all active subscriptions in `dispose()`.
 
-- [ ] **Task 3.5: Guard `setState()` with `mounted` Checks**
+- [x] **Task 3.5: Guard `setState()` with `mounted` Checks**
   - Paths: `lib/screens/item_details_screen.dart`, `lib/screens/epub_reader_screen.dart`
   - Requirements:
     - Add `if (mounted)` checks around all post-await `setState()` calls.

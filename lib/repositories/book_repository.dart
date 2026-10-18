@@ -1,7 +1,8 @@
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/jellyfin_service.dart';
 import '../services/database_service.dart';
 import '../models/item.dart';
-import 'package:flutter/foundation.dart';
 
 class BookRepository {
   final JellyfinService _apiService = JellyfinService();
@@ -174,13 +175,25 @@ class BookRepository {
                 .toList();
             await _dbService.clearCategory(category, parentId: parentId);
             await _dbService.saveItems(items, category);
+            final totalCount = response['TotalRecordCount'] as int?;
+            if (totalCount != null) {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setInt('total_count_$category', totalCount);
+            }
           },
           '$category (parentId: $parentId, recursive: $recursive, isFavorite: $isFavorite)',
         );
 
+        final prefs = await SharedPreferences.getInstance();
+        final savedTotal = prefs.getInt('total_count_$category');
+        final totalRecordCount = savedTotal ??
+            (cached.length >= (limit ?? 20)
+                ? cached.length + 1
+                : cached.length);
+
         return {
           'Items': cached.map((item) => item.toJson()).toList(),
-          'TotalRecordCount': cached.length, // Approximation
+          'TotalRecordCount': totalRecordCount,
         };
       }
     }
@@ -204,9 +217,36 @@ class BookRepository {
           .toList();
       await _dbService.clearCategory(category, parentId: parentId);
       await _dbService.saveItems(items, category);
+      final totalCount = response['TotalRecordCount'] as int?;
+      if (totalCount != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('total_count_$category', totalCount);
+      }
     }
 
     return response;
+  }
+
+  Future<void> toggleFavorite(
+    String url,
+    String userId,
+    String itemId,
+    String token,
+    bool isFavorite,
+  ) async {
+    await _apiService.toggleFavorite(url, userId, itemId, token, isFavorite);
+    await _dbService.updateItemUserData(itemId, isFavorite: isFavorite);
+  }
+
+  Future<void> togglePlayed(
+    String url,
+    String userId,
+    String itemId,
+    String token,
+    bool played,
+  ) async {
+    await _apiService.togglePlayed(url, userId, itemId, token, played);
+    await _dbService.updateItemUserData(itemId, played: played);
   }
 
   Future<Map<String, dynamic>> getItemDetails(

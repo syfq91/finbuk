@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/item.dart';
@@ -115,6 +116,7 @@ class DatabaseService {
       'items',
       where: 'id = ?',
       whereArgs: [id],
+      orderBy: 'updatedAt DESC',
       limit: 1,
     );
 
@@ -144,6 +146,46 @@ class DatabaseService {
       }
     }
     return result;
+  }
+
+  Future<void> updateItemUserData(
+    String itemId, {
+    bool? isFavorite,
+    bool? played,
+  }) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'items',
+      where: 'id = ?',
+      whereArgs: [itemId],
+    );
+    if (maps.isEmpty) return;
+
+    final batch = db.batch();
+    for (final map in maps) {
+      try {
+        final rawMap =
+            jsonDecode(map['json'] as String) as Map<String, dynamic>;
+        final userData = (rawMap['UserData'] as Map<String, dynamic>?) ??
+            <String, dynamic>{};
+        final newUserData = Map<String, dynamic>.from(userData);
+        if (isFavorite != null) newUserData['IsFavorite'] = isFavorite;
+        if (played != null) newUserData['Played'] = played;
+        rawMap['UserData'] = newUserData;
+
+        final category = map['category'] as String;
+        batch.update(
+          'items',
+          {
+            'json': jsonEncode(rawMap),
+            'updatedAt': DateTime.now().millisecondsSinceEpoch,
+          },
+          where: 'id = ? AND category = ?',
+          whereArgs: [itemId, category],
+        );
+      } catch (_) {}
+    }
+    await batch.commit(noResult: true);
   }
 
   Future<void> saveDownload(String itemId, String filename) async {
