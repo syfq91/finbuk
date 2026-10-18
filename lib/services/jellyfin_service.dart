@@ -16,10 +16,12 @@ class JellyfinService {
     String? deviceId,
   }) {
     final devId = deviceId ?? defaultDeviceId ?? 'finbuk-android-device';
+    final authValue =
+        'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="$devId", Version="1.0.0", Token="$token"';
     final headers = <String, String>{
+      'Authorization': authValue,
       'X-Emby-Token': token,
-      'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="$devId", Version="1.0.0"',
+      'X-Emby-Authorization': authValue,
     };
     if (json) headers['Content-Type'] = 'application/json';
     return headers;
@@ -34,9 +36,11 @@ class JellyfinService {
     final baseUrl = _normalizeUrl(url);
     final devId = deviceId ?? defaultDeviceId ?? 'finbuk-android-device';
 
+    final authValue =
+        'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="$devId", Version="1.0.0"';
     final headers = {
-      'X-Emby-Authorization':
-          'MediaBrowser Client="Finbuk Android", Device="Android Device", DeviceId="$devId", Version="1.0.0"',
+      'Authorization': authValue,
+      'X-Emby-Authorization': authValue,
       'Content-Type': 'application/json',
     };
 

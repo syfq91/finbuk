@@ -9,10 +9,7 @@ class MockHttpAdapter implements HttpClientAdapter {
   Map<String, dynamic> responseData;
   int statusCode;
 
-  MockHttpAdapter({
-    required this.responseData,
-    this.statusCode = 200,
-  });
+  MockHttpAdapter({required this.responseData, this.statusCode = 200});
 
   @override
   Future<ResponseBody> fetch(
@@ -45,10 +42,7 @@ void main() {
       mockAdapter = MockHttpAdapter(
         responseData: <String, dynamic>{
           'AccessToken': 'mock_token_123',
-          'User': <String, dynamic>{
-            'Id': 'user_abc',
-            'Name': 'TestUser',
-          },
+          'User': <String, dynamic>{'Id': 'user_abc', 'Name': 'TestUser'},
         },
       );
       dio = Dio();
@@ -78,127 +72,159 @@ void main() {
       );
       expect(
         pageUrl,
-        equals('https://my-server.com/Items/item-99/Images/Primary?index=3&maxWidth=1920'),
+        equals(
+          'https://my-server.com/Items/item-99/Images/Primary?index=3&maxWidth=1920',
+        ),
       );
     });
 
-    test('authenticate transmits credentials and custom deviceId in headers', () async {
-      final result = await jellyfinService.authenticate(
-        'http://example.com:8096/',
-        'jellyuser',
-        'secretpass',
-        deviceId: 'custom-device-uuid-1234',
-      );
+    test(
+      'authenticate transmits credentials and custom deviceId in headers',
+      () async {
+        final result = await jellyfinService.authenticate(
+          'http://example.com:8096/',
+          'jellyuser',
+          'secretpass',
+          deviceId: 'custom-device-uuid-1234',
+        );
 
-      expect(result['AccessToken'], equals('mock_token_123'));
-      expect(mockAdapter.lastOptions, isNotNull);
-      expect(
-        mockAdapter.lastOptions!.path,
-        equals('http://example.com:8096/Users/AuthenticateByName'),
-      );
+        expect(result['AccessToken'], equals('mock_token_123'));
+        expect(mockAdapter.lastOptions, isNotNull);
+        expect(
+          mockAdapter.lastOptions!.path,
+          equals('http://example.com:8096/Users/AuthenticateByName'),
+        );
 
-      final authHeader =
-          mockAdapter.lastOptions!.headers['X-Emby-Authorization'] as String;
-      expect(authHeader, contains('DeviceId="custom-device-uuid-1234"'));
-      expect(authHeader, contains('Client="Finbuk Android"'));
+        final embyAuthHeader =
+            mockAdapter.lastOptions!.headers['X-Emby-Authorization'] as String;
+        expect(embyAuthHeader, contains('DeviceId="custom-device-uuid-1234"'));
+        expect(embyAuthHeader, contains('Client="Finbuk Android"'));
 
-      final body = mockAdapter.lastOptions!.data as Map<String, dynamic>;
-      expect(body['Username'], equals('jellyuser'));
-      expect(body['Pw'], equals('secretpass'));
-    });
+        final standardAuthHeader =
+            mockAdapter.lastOptions!.headers['Authorization'] as String;
+        expect(
+          standardAuthHeader,
+          contains('DeviceId="custom-device-uuid-1234"'),
+        );
+        expect(standardAuthHeader, contains('Client="Finbuk Android"'));
 
-    test('authenticate falls back to defaultDeviceId when deviceId param is omitted', () async {
-      JellyfinService.defaultDeviceId = 'global-device-id-5678';
+        final body = mockAdapter.lastOptions!.data as Map<String, dynamic>;
+        expect(body['Username'], equals('jellyuser'));
+        expect(body['Pw'], equals('secretpass'));
+      },
+    );
 
-      await jellyfinService.authenticate(
-        'http://example.com:8096',
-        'jellyuser',
-        'secretpass',
-      );
+    test(
+      'authenticate falls back to defaultDeviceId when deviceId param is omitted',
+      () async {
+        JellyfinService.defaultDeviceId = 'global-device-id-5678';
 
-      final authHeader =
-          mockAdapter.lastOptions!.headers['X-Emby-Authorization'] as String;
-      expect(authHeader, contains('DeviceId="global-device-id-5678"'));
-    });
+        await jellyfinService.authenticate(
+          'http://example.com:8096',
+          'jellyuser',
+          'secretpass',
+        );
 
-    test('toggleFavorite sends POST when isFavorite is true and DELETE when false', () async {
-      await jellyfinService.toggleFavorite(
-        'http://example.com',
-        'user-1',
-        'item-2',
-        'token-3',
-        true,
-      );
+        final embyAuthHeader =
+            mockAdapter.lastOptions!.headers['X-Emby-Authorization'] as String;
+        expect(embyAuthHeader, contains('DeviceId="global-device-id-5678"'));
 
-      expect(mockAdapter.lastOptions!.method, equals('POST'));
-      expect(
-        mockAdapter.lastOptions!.path,
-        equals('http://example.com/Users/user-1/FavoriteItems/item-2'),
-      );
+        final standardAuthHeader =
+            mockAdapter.lastOptions!.headers['Authorization'] as String;
+        expect(
+          standardAuthHeader,
+          contains('DeviceId="global-device-id-5678"'),
+        );
+      },
+    );
 
-      await jellyfinService.toggleFavorite(
-        'http://example.com',
-        'user-1',
-        'item-2',
-        'token-3',
-        false,
-      );
+    test(
+      'toggleFavorite sends POST when isFavorite is true and DELETE when false',
+      () async {
+        await jellyfinService.toggleFavorite(
+          'http://example.com',
+          'user-1',
+          'item-2',
+          'token-3',
+          true,
+        );
 
-      expect(mockAdapter.lastOptions!.method, equals('DELETE'));
-      expect(
-        mockAdapter.lastOptions!.path,
-        equals('http://example.com/Users/user-1/FavoriteItems/item-2'),
-      );
-    });
+        expect(mockAdapter.lastOptions!.method, equals('POST'));
+        expect(
+          mockAdapter.lastOptions!.path,
+          equals('http://example.com/Users/user-1/FavoriteItems/item-2'),
+        );
 
-    test('togglePlayed sends POST when isPlayed is true and DELETE when false', () async {
-      await jellyfinService.togglePlayed(
-        'http://example.com',
-        'user-1',
-        'item-2',
-        'token-3',
-        true,
-      );
+        await jellyfinService.toggleFavorite(
+          'http://example.com',
+          'user-1',
+          'item-2',
+          'token-3',
+          false,
+        );
 
-      expect(mockAdapter.lastOptions!.method, equals('POST'));
-      expect(
-        mockAdapter.lastOptions!.path,
-        equals('http://example.com/Users/user-1/PlayedItems/item-2'),
-      );
+        expect(mockAdapter.lastOptions!.method, equals('DELETE'));
+        expect(
+          mockAdapter.lastOptions!.path,
+          equals('http://example.com/Users/user-1/FavoriteItems/item-2'),
+        );
+      },
+    );
 
-      await jellyfinService.togglePlayed(
-        'http://example.com',
-        'user-1',
-        'item-2',
-        'token-3',
-        false,
-      );
+    test(
+      'togglePlayed sends POST when isPlayed is true and DELETE when false',
+      () async {
+        await jellyfinService.togglePlayed(
+          'http://example.com',
+          'user-1',
+          'item-2',
+          'token-3',
+          true,
+        );
 
-      expect(mockAdapter.lastOptions!.method, equals('DELETE'));
-      expect(
-        mockAdapter.lastOptions!.path,
-        equals('http://example.com/Users/user-1/PlayedItems/item-2'),
-      );
-    });
+        expect(mockAdapter.lastOptions!.method, equals('POST'));
+        expect(
+          mockAdapter.lastOptions!.path,
+          equals('http://example.com/Users/user-1/PlayedItems/item-2'),
+        );
 
-    test('reportPlaybackStopped sends position ticks to session endpoint', () async {
-      await jellyfinService.reportPlaybackStopped(
-        'http://example.com',
-        'user-1',
-        'token-1',
-        'item-10',
-        12345678,
-      );
+        await jellyfinService.togglePlayed(
+          'http://example.com',
+          'user-1',
+          'item-2',
+          'token-3',
+          false,
+        );
 
-      expect(mockAdapter.lastOptions!.method, equals('POST'));
-      expect(
-        mockAdapter.lastOptions!.path,
-        equals('http://example.com/Sessions/Playing/Stopped'),
-      );
+        expect(mockAdapter.lastOptions!.method, equals('DELETE'));
+        expect(
+          mockAdapter.lastOptions!.path,
+          equals('http://example.com/Users/user-1/PlayedItems/item-2'),
+        );
+      },
+    );
 
-      final body = mockAdapter.lastOptions!.data as Map<String, dynamic>;
-      expect(body['ItemId'], equals('item-10'));
-      expect(body['PositionTicks'], equals(12345678));
-    });
+    test(
+      'reportPlaybackStopped sends position ticks to session endpoint',
+      () async {
+        await jellyfinService.reportPlaybackStopped(
+          'http://example.com',
+          'user-1',
+          'token-1',
+          'item-10',
+          12345678,
+        );
+
+        expect(mockAdapter.lastOptions!.method, equals('POST'));
+        expect(
+          mockAdapter.lastOptions!.path,
+          equals('http://example.com/Sessions/Playing/Stopped'),
+        );
+
+        final body = mockAdapter.lastOptions!.data as Map<String, dynamic>;
+        expect(body['ItemId'], equals('item-10'));
+        expect(body['PositionTicks'], equals(12345678));
+      },
+    );
   });
 }
