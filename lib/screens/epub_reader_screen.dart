@@ -56,7 +56,7 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
   EPUBPreferences _prefs = EPUBPreferences(
     fontFamily: 'Georgia',
     fontSize: 1.0,
-    fontWeight: 400.0,
+    fontWeight: null,
     scroll: false,
     backgroundColor: const Color(0xFFFFFFFF),
     textColor: const Color(0xFF000000),
@@ -128,13 +128,20 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
         final map = jsonDecode(raw) as Map<String, dynamic>;
         final rawFontSize = (map['fontSize'] as num?)?.toDouble() ?? 1.0;
         final fontSize = rawFontSize > 10.0 ? rawFontSize / 100.0 : rawFontSize;
+        final rawFontWeight = (map['fontWeight'] as num?)?.toDouble();
+        final fontWeight =
+            (rawFontWeight != null &&
+                rawFontWeight >= 0.0 &&
+                rawFontWeight <= 2.5)
+            ? rawFontWeight
+            : null;
         final scroll =
             (map['scroll'] ?? map['verticalScroll']) as bool? ?? false;
         setState(() {
           _prefs = EPUBPreferences(
             fontFamily: map['fontFamily'] as String? ?? 'Georgia',
             fontSize: fontSize,
-            fontWeight: (map['fontWeight'] as num?)?.toDouble() ?? 400.0,
+            fontWeight: fontWeight,
             scroll: scroll,
             backgroundColor: Color(
               map['backgroundColor'] as int? ?? 0xFFFFFFFF,
