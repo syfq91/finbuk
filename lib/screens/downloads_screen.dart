@@ -7,6 +7,9 @@ import '../models/item.dart';
 import 'item_details_screen.dart';
 import 'comic_reader_screen.dart';
 import 'epub_reader_screen.dart';
+import 'video_player_screen.dart';
+import 'music_player_screen.dart';
+import 'audiobook_player_screen.dart';
 
 class DownloadsScreen extends StatefulWidget {
   const DownloadsScreen({super.key});
@@ -64,7 +67,71 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       filePath = file.path;
     }
 
-    if (ext == '.cbz' || ext == '.cbr') {
+    final type = item.type ?? '';
+    final isVideo = type == 'Movie' ||
+        type == 'Episode' ||
+        type == 'Video' ||
+        type == 'Series' ||
+        type == 'Season' ||
+        const [
+          '.mp4',
+          '.mkv',
+          '.webm',
+          '.avi',
+          '.mov',
+          '.m4v',
+          '.flv',
+          '.3gp',
+          '.ts',
+        ].contains(ext);
+    final isAudiobook = type == 'AudioBook' || ext == '.m4b';
+    final isMusic = type == 'Audio' ||
+        (!isAudiobook &&
+            const [
+              '.mp3',
+              '.flac',
+              '.m4a',
+              '.aac',
+              '.ogg',
+              '.opus',
+              '.wav',
+              '.wma',
+            ].contains(ext));
+
+    if (isVideo) {
+      if (mounted) {
+        navigator.push(
+          MaterialPageRoute<void>(
+            builder: (context) => VideoPlayerScreen(
+              item: item.rawJson,
+              localFilePath: filePath,
+            ),
+          ),
+        );
+      }
+    } else if (isMusic) {
+      if (mounted) {
+        navigator.push(
+          MaterialPageRoute<void>(
+            builder: (context) => MusicPlayerScreen(
+              item: item.rawJson,
+              localFilePath: filePath,
+            ),
+          ),
+        );
+      }
+    } else if (isAudiobook) {
+      if (mounted) {
+        navigator.push(
+          MaterialPageRoute<void>(
+            builder: (context) => AudiobookPlayerScreen(
+              item: item.rawJson,
+              localFilePath: filePath,
+            ),
+          ),
+        );
+      }
+    } else if (ext == '.cbz' || ext == '.cbr') {
       if (mounted) {
         navigator.push(
           MaterialPageRoute<void>(
@@ -91,7 +158,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     } else {
       if (mounted) {
         messenger.showSnackBar(
-          const SnackBar(content: Text('Unsupported format for reading')),
+          const SnackBar(content: Text('Unsupported format for playback')),
         );
       }
     }

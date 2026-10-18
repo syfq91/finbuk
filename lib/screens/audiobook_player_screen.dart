@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
+import '../services/jellyfin_service.dart';
 
 class AudiobookPlayerScreen extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -20,37 +22,53 @@ class AudiobookPlayerScreen extends StatefulWidget {
 
 class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
   late final Player player = Player();
+  final JellyfinService _jellyfinService = JellyfinService();
+
+  StreamSubscription<Duration>? _positionSubscription;
+  StreamSubscription<Duration>? _durationSubscription;
+  StreamSubscription<bool>? _playingSubscription;
+  StreamSubscription<double>? _rateSubscription;
+
   Duration position = Duration.zero;
   Duration duration = Duration.zero;
   bool isPlaying = false;
   double playbackRate = 1.0;
+  DateTime _lastProgressReport = DateTime.fromMillisecondsSinceEpoch(0);
+
+  String? _serverUrl;
+  String? _userId;
+  String? _token;
+  late final String _itemId;
 
   @override
   void initState() {
     super.initState();
+    _itemId = widget.item['Id']?.toString() ?? '';
     _initPlayer();
   }
 
   Future<void> _initPlayer() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final serverUrl = auth.serverUrl;
-    final token = auth.token;
+    _serverUrl = auth.serverUrl;
+    _userId = auth.currentUser?.id;
+    _token = auth.token;
 
     final runTimeTicks = widget.item['RunTimeTicks'] as num?;
     final fallbackDuration = runTimeTicks != null && runTimeTicks > 0
         ? Duration(microseconds: (runTimeTicks / 10).round())
         : Duration.zero;
 
-    player.stream.position.listen((p) {
+    _positionSubscription = player.stream.position.listen((p) {
       if (mounted) setState(() => position = p);
+      _onPositionChanged(p);
     });
-    player.stream.duration.listen((d) {
+    _durationSubscription = player.stream.duration.listen((d) {
       if (mounted && d > Duration.zero) setState(() => duration = d);
     });
-    player.stream.playing.listen((p) {
+    _playingSubscription = player.stream.playing.listen((p) {
       if (mounted) setState(() => isPlaying = p);
     });
-    player.stream.rate.listen((r) {
+    _rateSubscription = player.stream.rate.listen((r) {
       if (mounted) setState(() => playbackRate = r);
     });
 
@@ -69,10 +87,10 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
     if (widget.localFilePath != null) {
       playable = Media(widget.localFilePath!);
     } else {
-      final streamUrl = '$serverUrl/Items/${widget.item['Id']}/Download';
+      final streamUrl = '$_serverUrl/Items/$_itemId/Download';
       playable = Media(
         streamUrl,
-        httpHeaders: token != null ? {'X-Emby-Token': token} : const {},
+        httpHeaders: _token != null ? {'X-Emby-Token': _token!} : const {},
       );
     }
 
@@ -80,10 +98,66 @@ class _AudiobookPlayerScreenState extends State<AudiobookPlayerScreen> {
     if (startPosition.inSeconds > 0) {
       await player.seek(startPosition);
     }
+
+    if (_serverUrl != null &&
+        _userId != null &&
+        _token != null &&
+        _itemId.isNotEmpty) {
+      unawaited(
+        _jellyfinService.reportPlaybackStart(
+          _serverUrl!,
+          _userId!,
+          _token!,
+          _itemId,
+        ),
+      );
+    }
+  }
+
+  void _onPositionChanged(Duration p) {
+    final now = DateTime.now();
+    if (now.difference(_lastProgressReport).inSeconds >= 10) {
+      _lastProgressReport = now;
+      if (_serverUrl != null &&
+          _userId != null &&
+          _token != null &&
+          _itemId.isNotEmpty) {
+        final positionTicks = p.inMicroseconds * 10;
+        unawaited(
+          _jellyfinService.reportProgress(
+            _serverUrl!,
+            _userId!,
+            _token!,
+            _itemId,
+            positionTicks,
+            !isPlaying,
+          ),
+        );
+      }
+    }
   }
 
   @override
   void dispose() {
+    if (_serverUrl != null &&
+        _userId != null &&
+        _token != null &&
+        _itemId.isNotEmpty) {
+      final positionTicks = position.inMicroseconds * 10;
+      unawaited(
+        _jellyfinService.reportPlaybackStopped(
+          _serverUrl!,
+          _userId!,
+          _token!,
+          _itemId,
+          positionTicks,
+        ),
+      );
+    }
+    _positionSubscription?.cancel();
+    _durationSubscription?.cancel();
+    _playingSubscription?.cancel();
+    _rateSubscription?.cancel();
     player.dispose();
     super.dispose();
   }

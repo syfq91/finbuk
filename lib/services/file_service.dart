@@ -158,13 +158,74 @@ class FileService {
   }
 
   String getExtension(Map<String, dynamic> item) {
-    final container = (item['Container'] ?? '').toString().toLowerCase();
-    final path = (item['Path'] ?? '').toString().toLowerCase();
+    String container = (item['Container'] ?? '').toString().toLowerCase();
+    String path = (item['Path'] ?? '').toString().toLowerCase();
 
-    if (container.contains('pdf') || path.endsWith('.pdf')) return '.pdf';
+    // Check nested MediaSources if container or path is empty
+    if (container.isEmpty || path.isEmpty) {
+      final mediaSources = item['MediaSources'] as List<dynamic>?;
+      if (mediaSources != null && mediaSources.isNotEmpty) {
+        final firstSource = mediaSources.first;
+        if (firstSource is Map<String, dynamic>) {
+          if (container.isEmpty) {
+            container =
+                (firstSource['Container'] ?? '').toString().toLowerCase();
+          }
+          if (path.isEmpty) {
+            path = (firstSource['Path'] ?? '').toString().toLowerCase();
+          }
+        }
+      }
+    }
+
+    // Books & Comics
     if (container.contains('epub') || path.endsWith('.epub')) return '.epub';
     if (container.contains('cbz') || path.endsWith('.cbz')) return '.cbz';
     if (container.contains('cbr') || path.endsWith('.cbr')) return '.cbr';
+    if (container.contains('pdf') || path.endsWith('.pdf')) return '.pdf';
+
+    // Video Formats
+    if (container.contains('mp4') ||
+        path.endsWith('.mp4') ||
+        container.contains('m4v') ||
+        path.endsWith('.m4v')) {
+      return '.mp4';
+    }
+    if (container.contains('mkv') ||
+        container.contains('matroska') ||
+        path.endsWith('.mkv')) {
+      return '.mkv';
+    }
+    if (container.contains('webm') || path.endsWith('.webm')) return '.webm';
+    if (container.contains('avi') || path.endsWith('.avi')) return '.avi';
+    if (container.contains('mov') || path.endsWith('.mov')) return '.mov';
+    if (container.contains('flv') || path.endsWith('.flv')) return '.flv';
+    if (container.contains('3gp') || path.endsWith('.3gp')) return '.3gp';
+    if (container.contains('ts') || path.endsWith('.ts')) return '.ts';
+
+    // Audio Formats
+    if (container.contains('mp3') || path.endsWith('.mp3')) return '.mp3';
+    if (container.contains('flac') || path.endsWith('.flac')) return '.flac';
+    if (container.contains('m4b') || path.endsWith('.m4b')) return '.m4b';
+    if (container.contains('m4a') || path.endsWith('.m4a')) return '.m4a';
+    if (container.contains('aac') || path.endsWith('.aac')) return '.aac';
+    if (container.contains('ogg') ||
+        container.contains('oga') ||
+        path.endsWith('.ogg') ||
+        path.endsWith('.oga')) {
+      return '.ogg';
+    }
+    if (container.contains('opus') || path.endsWith('.opus')) return '.opus';
+    if (container.contains('wav') || path.endsWith('.wav')) return '.wav';
+    if (container.contains('wma') || path.endsWith('.wma')) return '.wma';
+
+    // Fallback: extract extension directly from Path if available
+    if (path.isNotEmpty) {
+      final ext = p.extension(path);
+      if (ext.isNotEmpty && ext.length <= 5) {
+        return ext;
+      }
+    }
 
     return '';
   }

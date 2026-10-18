@@ -160,6 +160,7 @@ class DownloadManager {
 
     // Remove from active downloads
     _activeDownloads.remove(itemId);
+    _scheduleStreamCleanup(itemId);
 
     // Remove from queue if present
     _downloadQueue.removeWhere((t) => t.itemId == itemId);
@@ -267,6 +268,7 @@ class DownloadManager {
       if (task.status == DownloadStatus.cancelled ||
           task.status == DownloadStatus.failed) {
         _activeDownloads.remove(task.itemId);
+        _scheduleStreamCleanup(task.itemId);
       }
       _processQueue();
     } catch (e) {
@@ -274,6 +276,7 @@ class DownloadManager {
       task.error = e.toString();
       _notifyListeners(task.itemId);
       _activeDownloads.remove(task.itemId);
+      _scheduleStreamCleanup(task.itemId);
       _processQueue();
     }
   }

@@ -477,7 +477,45 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
       }
       return;
     }
-    if (ext == '.cbz' || ext == '.cbr') {
+    final type = item['Type'] as String? ?? '';
+    final isVideo = type == 'Movie' ||
+        type == 'Episode' ||
+        type == 'Video' ||
+        const ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'].contains(ext);
+    final isAudiobook = type == 'AudioBook' || ext == '.m4b';
+    final isMusic = type == 'Audio' ||
+        (!isAudiobook &&
+            const ['.mp3', '.flac', '.m4a', '.aac', '.ogg', '.opus', '.wav']
+                .contains(ext));
+
+    if (isVideo) {
+      navigator.push(
+        MaterialPageRoute<void>(
+          builder: (context) => VideoPlayerScreen(
+            item: item,
+            localFilePath: _localFile?.path,
+          ),
+        ),
+      );
+    } else if (isMusic) {
+      navigator.push(
+        MaterialPageRoute<void>(
+          builder: (context) => MusicPlayerScreen(
+            item: item,
+            localFilePath: _localFile?.path,
+          ),
+        ),
+      );
+    } else if (isAudiobook) {
+      navigator.push(
+        MaterialPageRoute<void>(
+          builder: (context) => AudiobookPlayerScreen(
+            item: item,
+            localFilePath: _localFile?.path,
+          ),
+        ),
+      );
+    } else if (ext == '.cbz' || ext == '.cbr') {
       navigator.push(
         MaterialPageRoute<void>(
           builder: (context) => ComicReaderScreen(
@@ -500,7 +538,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
     } else {
       if (navigator.context.mounted) {
         ScaffoldMessenger.of(navigator.context).showSnackBar(
-          const SnackBar(content: Text('Unsupported format for reading')),
+          const SnackBar(content: Text('Unsupported format for playback')),
         );
       }
       return;
@@ -667,22 +705,29 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                                 if (isVideo) {
                                   Navigator.of(context).push(
                                     MaterialPageRoute<void>(
-                                      builder: (context) =>
-                                          VideoPlayerScreen(item: item),
+                                      builder: (context) => VideoPlayerScreen(
+                                        item: item,
+                                        localFilePath: _localFile?.path,
+                                      ),
                                     ),
                                   );
                                 } else if (isMusic) {
                                   Navigator.of(context).push(
                                     MaterialPageRoute<void>(
-                                      builder: (context) =>
-                                          MusicPlayerScreen(item: item),
+                                      builder: (context) => MusicPlayerScreen(
+                                        item: item,
+                                        localFilePath: _localFile?.path,
+                                      ),
                                     ),
                                   );
                                 } else if (isAudiobook) {
                                   Navigator.of(context).push(
                                     MaterialPageRoute<void>(
                                       builder: (context) =>
-                                          AudiobookPlayerScreen(item: item),
+                                          AudiobookPlayerScreen(
+                                        item: item,
+                                        localFilePath: _localFile?.path,
+                                      ),
                                     ),
                                   );
                                 } else {

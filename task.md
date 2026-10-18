@@ -11,10 +11,10 @@
 | Phase | Description | Status | Total | Done | In Progress | Pending |
 |---|---|:---:|:---:|:---:|:---:|:---:|
 | **Phase 1** | Compilation Blockers & Navigation | 🟢 Complete | 7 | 7 | 0 | 0 |
-| **Phase 2** | Media Playback & Offline Downloads | ⚪ Pending | 4 | 0 | 0 | 4 |
+| **Phase 2** | Media Playback & Offline Downloads | 🟢 Complete | 4 | 4 | 0 | 0 |
 | **Phase 3** | Architecture, Concurrency & Performance | ⚪ Pending | 5 | 0 | 0 | 5 |
 | **Phase 4** | Policy, Database & Test Coverage | ⚪ Pending | 4 | 0 | 0 | 4 |
-| **Total** | | | **20** | **7** | **0** | **13** |
+| **Total** | | | **20** | **11** | **0** | **9** |
 
 ---
 
@@ -75,14 +75,14 @@ Resolve missing files, navigation state locking, and authentication crashes to b
 
 Fix offline media support, file format detection, and media player progress tracking.
 
-- [ ] **Task 2.1: Expand [`FileService.getExtension`](lib/services/file_service.dart) for Video and Audio**
+- [x] **Task 2.1: Expand [`FileService.getExtension`](lib/services/file_service.dart) for Video and Audio**
   - Path: `lib/services/file_service.dart`
   - Requirements:
     - Support Video extensions: `.mp4`, `.mkv`, `.webm`, `.avi`, `.mov`.
     - Support Audio extensions: `.mp3`, `.flac`, `.m4a`, `.m4b`, `.aac`, `.ogg`, `.opus`.
     - Fallback to inspecting `Path` extension if `Container` is ambiguous.
 
-- [ ] **Task 2.2: Add Video & Audio Playback Routing in [`DownloadsScreen`](lib/screens/downloads_screen.dart)**
+- [x] **Task 2.2: Add Video & Audio Playback Routing in [`DownloadsScreen`](lib/screens/downloads_screen.dart)**
   - Path: `lib/screens/downloads_screen.dart`
   - Requirements:
     - Check item type / extension on tap.
@@ -90,13 +90,13 @@ Fix offline media support, file format detection, and media player progress trac
     - If music: navigate to [`MusicPlayerScreen`](lib/screens/music_player_screen.dart) with `localFilePath`.
     - If audiobook: navigate to [`AudiobookPlayerScreen`](lib/screens/audiobook_player_screen.dart) with `localFilePath`.
 
-- [ ] **Task 2.3: Clean Up Stream Controllers on Error in [`DownloadManager`](lib/services/download_manager.dart)**
+- [x] **Task 2.3: Clean Up Stream Controllers on Error in [`DownloadManager`](lib/services/download_manager.dart)**
   - Path: `lib/services/download_manager.dart`
   - Requirements:
     - Invoke `_scheduleStreamCleanup(task.itemId)` in `catch (DioException)` and `catch (e)` blocks.
     - Ensure cancelled/failed tasks do not leak memory in `_streamControllers`.
 
-- [ ] **Task 2.4: Implement Playback Reporting in Media Players**
+- [x] **Task 2.4: Implement Playback Reporting in Media Players**
   - Paths: `lib/screens/video_player_screen.dart`, `lib/screens/audiobook_player_screen.dart`
   - Requirements:
     - Listen to `player.stream.position` and periodically report progress via `JellyfinService.reportProgress`.
