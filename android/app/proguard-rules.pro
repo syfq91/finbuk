@@ -1,4 +1,6 @@
--keep class dev.mulev.flureadium.** { *; }
--dontwarn dev.mulev.flureadium.**
+-keep class dk.nota.flutterreadium.** { *; }
+-dontwarn dk.nota.flutterreadium.**
+-keep class dk.nota.flutter_readium.** { *; }
+-dontwarn dk.nota.flutter_readium.**
 -keep class org.readium.** { *; }
 -dontwarn org.readium.**

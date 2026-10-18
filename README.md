@@ -27,7 +27,7 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 - **State Management**: Provider (ChangeNotifier)
 - **HTTP Client**: Dio
 - **Local Storage**: SQLite (sqflite), SharedPreferences, flutter_secure_storage, path_provider
-- **Comic Reader**: flureadium (Readium toolkit)
+- **Comic Reader**: flutter_readium (Readium toolkit)
 - **Media Player**: media_kit (Video/Audio engine)
 - **Build**: Java 21 with core library desugaring and Android `compileSdk 37`
 
@@ -57,8 +57,8 @@ A modern Flutter **Android** application client for [Jellyfin](https://jellyfin.
 
 ## Supported Formats
 
-- **Comics**: `.cbz`, `.cbr` (native Readium support via flureadium)
-- **Books**: `.epub` (full support via flureadium)
+- **Comics**: `.cbz`, `.cbr` (native Readium support via flutter_readium)
+- **Books**: `.epub` (full support via flutter_readium)
 - **Video**: Standard video formats (mp4, mkv, webm) (via `media_kit`)
 - **Audio**: Music and Audiobooks (mp3, flac, m4a, etc) (via `media_kit`)
 
@@ -98,15 +98,15 @@ See [AGENTS.md](AGENTS.md) for detailed architecture documentation.
 
 ## Developer Notes
 
-- EPUB reader preferences are queued in `lib/screens/epub_reader_screen.dart` and only applied once `ReadiumReaderWidget` is ready.
-- `ReadiumReaderWidget` `onReady` is the correct place to subscribe to `flureadium.onTextLocatorChanged` and `flureadium.onErrorEvent`.
+- Reading progress and position are tracked through `flutter_readium` event streams (`onTextLocatorChanged`).
+- `ReadiumReaderWidget` operates without gesture-intercepting wrappers to preserve native platform view touch handling.
 
 ## Dependencies
 
 Key dependencies:
 
 - `dio`: HTTP client for Jellyfin API communication
-- `flureadium`: Readium-based comic/book reading engine (v0.16.0)
+- `flutter_readium`: Readium-based comic/book reading engine (v0.6.2)
 - `media_kit`: Cross-platform video/audio player engine
 - `sqflite`: Local SQLite database for caching
 - `provider`: Reactive state management
@@ -133,5 +133,5 @@ Contributions are welcome. When making changes:
 
 - [Jellyfin](https://jellyfin.org/) - Free and open-source media server
 - [Readium](https://readium.org/) - Open-source toolkit for digital publications
-- [flureadium](https://github.com/mulev/flureadium) - Flutter plugin for Readium toolkits
+- [flutter_readium](https://pub.dev/packages/flutter_readium) - Flutter plugin for Readium toolkits
 - Flutter community for excellent packages and documentation

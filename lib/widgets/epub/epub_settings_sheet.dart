@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flureadium/flureadium.dart';
+import 'package:flutter_readium/flutter_readium.dart';
 
 class EpubSettingsSheet extends StatefulWidget {
   final EPUBPreferences prefs;
@@ -44,11 +44,11 @@ class _EpubSettingsSheetState extends State<EpubSettingsSheet> {
     widget.onChanged(p);
   }
 
-  EPUBPreferences _withFontSize(int size) => EPUBPreferences(
+  EPUBPreferences _withFontSize(double size) => EPUBPreferences(
     fontFamily: _current.fontFamily,
     fontSize: size,
     fontWeight: _current.fontWeight,
-    verticalScroll: _current.verticalScroll,
+    scroll: _current.scroll,
     backgroundColor: _current.backgroundColor,
     textColor: _current.textColor,
   );
@@ -57,7 +57,7 @@ class _EpubSettingsSheetState extends State<EpubSettingsSheet> {
     fontFamily: family,
     fontSize: _current.fontSize,
     fontWeight: _current.fontWeight,
-    verticalScroll: _current.verticalScroll,
+    scroll: _current.scroll,
     backgroundColor: _current.backgroundColor,
     textColor: _current.textColor,
   );
@@ -66,7 +66,7 @@ class _EpubSettingsSheetState extends State<EpubSettingsSheet> {
     fontFamily: _current.fontFamily,
     fontSize: _current.fontSize,
     fontWeight: _current.fontWeight,
-    verticalScroll: v,
+    scroll: v,
     backgroundColor: _current.backgroundColor,
     textColor: _current.textColor,
   );
@@ -125,7 +125,7 @@ class _EpubSettingsSheetState extends State<EpubSettingsSheet> {
                             fontFamily: t.font,
                             fontSize: _current.fontSize,
                             fontWeight: _current.fontWeight,
-                            verticalScroll: _current.verticalScroll,
+                            scroll: _current.scroll,
                             backgroundColor: t.bg,
                             textColor: t.fg,
                           ),
@@ -161,29 +161,41 @@ class _EpubSettingsSheetState extends State<EpubSettingsSheet> {
               const SizedBox(height: 20),
 
               // Font size
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Font Size',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  Text(
-                    '${_current.fontSize}%',
-                    style: TextStyle(
-                      color: cs.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              Slider(
-                min: 60,
-                max: 200,
-                divisions: 28,
-                value: _current.fontSize.toDouble(),
-                label: '${_current.fontSize}%',
-                onChanged: (v) => _update(_withFontSize(v.round())),
+              Builder(
+                builder: (context) {
+                  final double currentScale = _current.fontSize ?? 1.0;
+                  final String percentLabel = '${(currentScale * 100).round()}%';
+                  return Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Font Size',
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                          Text(
+                            percentLabel,
+                            style: TextStyle(
+                              color: cs.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        min: 0.6,
+                        max: 2.0,
+                        divisions: 14,
+                        value: currentScale.clamp(0.6, 2.0),
+                        label: percentLabel,
+                        onChanged: (v) => _update(
+                          _withFontSize(double.parse(v.toStringAsFixed(1))),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 8),
 
@@ -214,7 +226,7 @@ class _EpubSettingsSheetState extends State<EpubSettingsSheet> {
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Scroll Mode'),
                 subtitle: const Text('Continuous vertical scrolling'),
-                value: _current.verticalScroll ?? false,
+                value: _current.scroll ?? false,
                 onChanged: (v) => _update(_withScroll(v)),
               ),
               const SizedBox(height: 8),

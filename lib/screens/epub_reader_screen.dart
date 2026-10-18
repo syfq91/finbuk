@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart' hide Locator;
-import 'package:flureadium/flureadium.dart';
+import 'package:flutter_readium/flutter_readium.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -38,7 +38,7 @@ class EpubReaderScreen extends StatefulWidget {
 // ---------------------------------------------------------------------------
 
 class _EpubReaderScreenState extends State<EpubReaderScreen> {
-  final _flureadium = Flureadium();
+  final _readium = FlutterReadium();
   final _jellyfinService = JellyfinService();
 
   Publication? _publication;
@@ -55,14 +55,12 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
   // EPUB preferences
   EPUBPreferences _prefs = EPUBPreferences(
     fontFamily: 'Georgia',
-    fontSize: 100,
+    fontSize: 1.0,
     fontWeight: 400.0,
-    verticalScroll: false,
+    scroll: false,
     backgroundColor: const Color(0xFFFFFFFF),
     textColor: const Color(0xFF000000),
   );
-  bool _readerReady = false;
-  EPUBPreferences? _pendingPrefs;
 
   // Jellyfin state
   String? _serverUrl;
@@ -70,7 +68,7 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
   String? _userId;
   int? _totalTicks;
 
-  // Stream subscriptions — set up in onReady per the docs
+  // Stream subscriptions
   StreamSubscription<Locator>? _locatorSub;
   StreamSubscription<ReadiumError>? _errorSub;
 
@@ -113,7 +111,7 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
       );
     }
 
-    _flureadium.closePublication();
+    _readium.closePublication();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
@@ -128,12 +126,15 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
       final raw = sp.getString(_prefsKey);
       if (raw != null && mounted) {
         final map = jsonDecode(raw) as Map<String, dynamic>;
+        final rawFontSize = (map['fontSize'] as num?)?.toDouble() ?? 1.0;
+        final fontSize = rawFontSize > 10.0 ? rawFontSize / 100.0 : rawFontSize;
+        final scroll = (map['scroll'] ?? map['verticalScroll']) as bool? ?? false;
         setState(() {
           _prefs = EPUBPreferences(
             fontFamily: map['fontFamily'] as String? ?? 'Georgia',
-            fontSize: (map['fontSize'] as num?)?.toInt() ?? 100,
+            fontSize: fontSize,
             fontWeight: (map['fontWeight'] as num?)?.toDouble() ?? 400.0,
-            verticalScroll: map['verticalScroll'] as bool? ?? false,
+            scroll: scroll,
             backgroundColor: Color(
               map['backgroundColor'] as int? ?? 0xFFFFFFFF,
             ),
@@ -153,7 +154,7 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
           'fontFamily': p.fontFamily,
           'fontSize': p.fontSize,
           'fontWeight': p.fontWeight,
-          'verticalScroll': p.verticalScroll,
+          'scroll': p.scroll,
           'backgroundColor': p.backgroundColor?.toARGB32(),
           'textColor': p.textColor?.toARGB32(),
         }),
@@ -163,10 +164,10 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
 
   Future<void> _applyPrefs(EPUBPreferences p) async {
     setState(() => _prefs = p);
-    _pendingPrefs = p;
-    if (_readerReady) {
-      await _flureadium.setEPUBPreferences(p);
-      _pendingPrefs = null;
+    try {
+      await _readium.setEPUBPreferences(p);
+    } catch (e) {
+      debugPrint('Failed to set EPUB preferences: $e');
     }
     await _savePrefs(p);
   }
@@ -196,10 +197,12 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
       } catch (_) {}
 
       // Set default preferences before opening
-      _flureadium.setDefaultPreferences(_prefs);
+      _readium.setDefaultPreferences(_prefs);
 
       // Open the publication — pass the raw filesystem path
-      final pub = await _flureadium.openPublication(widget.filePath!);
+      final pub = await _readium.openPublication(widget.filePath!);
+
+      _setupSubscriptions();
 
       // Report playback start to Jellyfin
       if (_serverUrl != null && _token != null && _userId != null) {
@@ -250,20 +253,14 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // onReady — subscribe to EventChannels here per flureadium docs
+  // Stream subscriptions
   // ---------------------------------------------------------------------------
 
-  void _onReaderReady() {
-    _readerReady = true;
+  void _setupSubscriptions() {
     _locatorSub?.cancel();
     _errorSub?.cancel();
 
-    if (_pendingPrefs != null) {
-      _flureadium.setEPUBPreferences(_pendingPrefs!);
-      _pendingPrefs = null;
-    }
-
-    _locatorSub = _flureadium.onTextLocatorChanged.listen((locator) {
+    _locatorSub = _readium.onTextLocatorChanged.listen((locator) {
       if (!mounted) return;
 
       setState(() {
@@ -273,14 +270,14 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
       _saveProgress(locator);
     });
 
-    _errorSub = _flureadium.onErrorEvent.listen((error) {
+    _errorSub = _readium.onErrorEvent.listen((error) {
       debugPrint('EPUB Reader Error: $error');
     });
   }
 
   Future<void> _goPreviousPage() async {
     try {
-      await _flureadium.goLeft();
+      await _readium.goBackward();
     } catch (e) {
       debugPrint('Failed to navigate to previous EPUB page: $e');
     }
@@ -288,7 +285,7 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
 
   Future<void> _goNextPage() async {
     try {
-      await _flureadium.goRight();
+      await _readium.goForward();
     } catch (e) {
       debugPrint('Failed to navigate to next EPUB page: $e');
     }
@@ -331,9 +328,16 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => EpubTocSheet(
         toc: _publication!.tableOfContents,
-        onTap: (link) {
+        onTap: (link) async {
           Navigator.pop(context);
-          _flureadium.goByLink(link, _publication!);
+          final locator = _publication?.locatorFromLink(link);
+          if (locator != null) {
+            try {
+              await _readium.goToLocator(locator);
+            } catch (e) {
+              debugPrint('Failed to go to locator: $e');
+            }
+          }
         },
       ),
     );
@@ -460,15 +464,6 @@ class _EpubReaderScreenState extends State<EpubReaderScreen> {
           ReadiumReaderWidget(
             publication: _publication!,
             initialLocator: _initialLocator,
-            onReady: _onReaderReady,
-            onLocatorChanged: (locator) {
-              if (mounted) {
-                setState(() {
-                  _currentProgress = locator.locations?.totalProgression ?? 0.0;
-                });
-              }
-              _saveProgress(locator);
-            },
             onExternalLinkActivated: _onExternalLink,
           ),
 

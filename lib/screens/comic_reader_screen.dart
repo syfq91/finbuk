@@ -1,8 +1,9 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart' hide Locator;
-import 'package:flureadium/flureadium.dart';
+import 'package:flutter_readium/flutter_readium.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../services/jellyfin_service.dart';
@@ -32,7 +33,7 @@ class ComicReaderScreen extends StatefulWidget {
 // ---------------------------------------------------------------------------
 
 class _ComicReaderScreenState extends State<ComicReaderScreen> {
-  final _flureadium = Flureadium();
+  final _readium = FlutterReadium();
   final _jellyfinService = JellyfinService();
 
   Publication? _publication;
@@ -54,7 +55,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
   String? _userId;
   int? _totalTicks;
 
-  // Stream subscriptions — set up in onReady per the docs
+  // Stream subscriptions
   StreamSubscription<Locator>? _locatorSub;
   StreamSubscription<ReadiumError>? _errorSub;
 
@@ -97,7 +98,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
       );
     }
 
-    _flureadium.closePublication();
+    _readium.closePublication();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
@@ -131,10 +132,12 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
       }
 
       // Open the publication — pass the raw filesystem path
-      final pub = await _flureadium.openPublication(widget.filePath!);
+      final pub = await _readium.openPublication(widget.filePath!);
 
       debugPrint('Publication opened: ${pub.metadata.title}');
       debugPrint('Reading order: ${pub.readingOrder.length} items');
+
+      _setupSubscriptions();
 
       // Report playback start to Jellyfin
       if (_serverUrl != null && _token != null && _userId != null) {
@@ -187,14 +190,14 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // onReady — subscribe to EventChannels here per flureadium docs
+  // Stream subscriptions
   // ---------------------------------------------------------------------------
 
-  void _onReaderReady() {
+  void _setupSubscriptions() {
     _locatorSub?.cancel();
     _errorSub?.cancel();
 
-    _locatorSub = _flureadium.onTextLocatorChanged.listen((locator) {
+    _locatorSub = _readium.onTextLocatorChanged.listen((locator) {
       if (!mounted) return;
 
       setState(() {
@@ -205,14 +208,14 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
       _saveProgress(locator);
     });
 
-    _errorSub = _flureadium.onErrorEvent.listen((error) {
-      debugPrint('Flureadium error: $error');
+    _errorSub = _readium.onErrorEvent.listen((error) {
+      debugPrint('Readium error: $error');
     });
   }
 
   Future<void> _goPreviousPage() async {
     try {
-      await _flureadium.goLeft();
+      await _readium.goBackward();
     } catch (e) {
       debugPrint('Failed to navigate to previous page: $e');
     }
@@ -220,7 +223,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
 
   Future<void> _goNextPage() async {
     try {
-      await _flureadium.goRight();
+      await _readium.goForward();
     } catch (e) {
       debugPrint('Failed to navigate to next page: $e');
     }
@@ -324,7 +327,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
       );
     }
 
-    // Main reader layout — follows the official flureadium documentation
+    // Main reader layout — follows the official flutter_readium documentation
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -333,16 +336,6 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
           ReadiumReaderWidget(
             publication: _publication!,
             initialLocator: _initialLocator,
-            onReady: _onReaderReady,
-            onLocatorChanged: (locator) {
-              if (mounted) {
-                setState(() {
-                  _currentProgress = locator.locations?.totalProgression ?? 0.0;
-                  _currentPosition = locator.locations?.position ?? 0;
-                });
-              }
-              _saveProgress(locator);
-            },
           ),
 
           // Tap zones for page navigation and overlay toggle

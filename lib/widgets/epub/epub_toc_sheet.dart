@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flureadium/flureadium.dart';
+import 'package:flutter_readium/flutter_readium.dart';
 
 class EpubTocSheet extends StatelessWidget {
   final List<Link> toc;
